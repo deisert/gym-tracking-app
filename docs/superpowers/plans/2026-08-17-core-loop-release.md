@@ -2121,53 +2121,67 @@ type Props = {
 };
 
 export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }: Props) {
-  const [rows, setRows] = useState<DraftRow[]>(() => sets.map(toDraft));
+  const [rows, setRowsState] = useState<DraftRow[]>(() => sets.map(toDraft));
   const [, startTransition] = useTransition();
+
+  /**
+   * A mirror of `rows` that callbacks can read synchronously.
+   *
+   * React may invoke a state updater more than once (StrictMode does exactly
+   * that in development), so updaters must stay pure. Dispatching a save from
+   * inside one would save the set twice. Everything that has a side effect
+   * reads `rowsRef.current` instead.
+   */
+  const rowsRef = useRef<DraftRow[]>(rows);
   const retriedRef = useRef<Set<string>>(new Set());
 
-  const patch = useCallback((key: string, changes: Partial<DraftRow>) => {
-    setRows((current) =>
-      current.map((row) => (row.key === key ? { ...row, ...changes } : row))
-    );
+  const setRows = useCallback((update: (current: DraftRow[]) => DraftRow[]) => {
+    rowsRef.current = update(rowsRef.current);
+    setRowsState(rowsRef.current);
   }, []);
 
-  const commit = useCallback(
-    (key: string) => {
-      setRows((current) => {
-        const row = current.find((candidate) => candidate.key === key);
-        if (!row) return current;
+  const patch = useCallback(
+    (key: string, changes: Partial<DraftRow>) => {
+      setRows((current) =>
+        current.map((row) => (row.key === key ? { ...row, ...changes } : row))
+      );
+    },
+    [setRows]
+  );
 
-        const input = parseRow(row);
-        // An incomplete row is a draft, not a failure — leave it alone.
-        if (!Number.isFinite(input.weight_kg) || !Number.isFinite(input.reps) || input.reps < 1) {
-          return current;
+  // A named function expression, so the retry below can call it by name
+  // without a forward reference.
+  const commit = useCallback(
+    function commit(key: string) {
+      const row = rowsRef.current.find((candidate) => candidate.key === key);
+      if (!row) return;
+
+      const input = parseRow(row);
+      // An incomplete row is a draft, not a failure — leave it alone.
+      if (!Number.isFinite(input.weight_kg) || !Number.isFinite(input.reps) || input.reps < 1) {
+        return;
+      }
+
+      patch(key, { status: "saving" });
+
+      startTransition(async () => {
+        const result = row.id
+          ? await updateSet(workoutId, row.id, input)
+          : await addSet(workoutId, workoutExerciseId, input);
+
+        if (result.ok) {
+          retriedRef.current.delete(key);
+          patch(key, { id: result.data.id, status: "saved" });
+          return;
         }
 
-        startTransition(async () => {
-          patch(key, { status: "saving" });
+        patch(key, { status: "error" });
 
-          const result = row.id
-            ? await updateSet(workoutId, row.id, input)
-            : await addSet(workoutId, workoutExerciseId, input);
-
-          if (result.ok) {
-            retriedRef.current.delete(key);
-            patch(key, { id: result.data.id, status: "saved" });
-            return;
-          }
-
-          patch(key, { status: "error" });
-
-          // Exactly one automatic retry, then the row waits for a tap.
-          if (!retriedRef.current.has(key)) {
-            retriedRef.current.add(key);
-            setTimeout(() => commit(key), 2000);
-          }
-        });
-
-        return current.map((candidate) =>
-          candidate.key === key ? { ...candidate, status: "saving" } : candidate
-        );
+        // Exactly one automatic retry, then the row waits for a tap.
+        if (!retriedRef.current.has(key)) {
+          retriedRef.current.add(key);
+          setTimeout(() => commit(key), 2000);
+        }
       });
     },
     [patch, workoutExerciseId, workoutId]
@@ -2188,12 +2202,13 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
   }
 
   function removeRow(key: string) {
-    const row = rows.find((candidate) => candidate.key === key);
+    const row = rowsRef.current.find((candidate) => candidate.key === key);
     setRows((current) => current.filter((candidate) => candidate.key !== key));
 
     if (row?.id) {
+      const setId = row.id;
       startTransition(async () => {
-        await deleteSet(workoutId, row.id!);
+        await deleteSet(workoutId, setId);
       });
     }
   }
