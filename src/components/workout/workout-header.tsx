@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 
 import { updateWorkoutMeta } from "@/app/workout/actions";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatPerformedOn } from "@/lib/dates";
@@ -57,6 +56,7 @@ export function WorkoutHeader({ workoutId, performedOn, category, note }: Props)
             <Input
               id="performed-on"
               type="date"
+              className="min-h-11"
               value={meta.performedOn}
               onChange={(event) => setMeta({ ...meta, performedOn: event.target.value })}
               onBlur={() => save(meta)}
@@ -67,6 +67,7 @@ export function WorkoutHeader({ workoutId, performedOn, category, note }: Props)
             <Label htmlFor="category">Kategorie</Label>
             <Input
               id="category"
+              className="min-h-11"
               value={meta.category}
               placeholder="Push, Pull, Beine …"
               onChange={(event) => setMeta({ ...meta, category: event.target.value })}
@@ -78,6 +79,7 @@ export function WorkoutHeader({ workoutId, performedOn, category, note }: Props)
             <Label htmlFor="note">Notiz</Label>
             <Input
               id="note"
+              className="min-h-11"
               value={meta.note}
               placeholder="Wie lief's?"
               onChange={(event) => setMeta({ ...meta, note: event.target.value })}
