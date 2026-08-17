@@ -77,16 +77,17 @@ export async function updateWorkoutMeta(
   }
 
   const supabase = await createServerSupabase();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("workouts")
     .update({
       performed_on: parsed.data.performed_on,
       category: parsed.data.category || null,
       note: parsed.data.note || null,
     })
-    .eq("id", workoutId);
+    .eq("id", workoutId)
+    .select("id");
 
-  if (error) return { ok: false, error: SAVE_FAILED };
+  if (error || !data || data.length === 0) return { ok: false, error: SAVE_FAILED };
 
   revalidatePath(`/workout/${workoutId}`);
   revalidatePath("/");
@@ -125,12 +126,15 @@ export async function removeWorkoutExercise(
   workoutExerciseId: string
 ): Promise<ActionResult<null>> {
   const supabase = await createServerSupabase();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("workout_exercises")
     .delete()
-    .eq("id", workoutExerciseId);
+    .eq("id", workoutExerciseId)
+    .select("id");
 
-  if (error) return { ok: false, error: "Übung konnte nicht entfernt werden." };
+  if (error || !data || data.length === 0) {
+    return { ok: false, error: "Übung konnte nicht entfernt werden." };
+  }
 
   revalidatePath(`/workout/${workoutId}`);
   return { ok: true, data: null };
@@ -159,13 +163,18 @@ export async function findOrCreateExercise(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: NOT_SIGNED_IN };
 
-  const { data: match } = await supabase
+  const { data: matches, error: matchError } = await supabase
     .from("exercises")
     .select("id, name, note")
     .ilike("name", cleanName)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
 
-  if (match) return { ok: true, data: match };
+  if (matchError) {
+    console.error("findOrCreateExercise: lookup failed", { name: cleanName }, matchError);
+  }
+
+  if (matches && matches.length > 0) return { ok: true, data: matches[0] };
 
   const { data, error } = await supabase
     .from("exercises")
@@ -175,13 +184,18 @@ export async function findOrCreateExercise(
 
   if (error || !data) {
     // Lost a race against another tab, or hit the exact-match unique index.
-    const { data: retry } = await supabase
+    const { data: retryMatches, error: retryError } = await supabase
       .from("exercises")
       .select("id, name, note")
       .ilike("name", cleanName)
-      .maybeSingle();
+      .order("created_at", { ascending: true })
+      .limit(1);
 
-    if (retry) return { ok: true, data: retry };
+    if (retryError) {
+      console.error("findOrCreateExercise: retry lookup failed", { name: cleanName }, retryError);
+    }
+
+    if (retryMatches && retryMatches.length > 0) return { ok: true, data: retryMatches[0] };
     return { ok: false, error: "Übung konnte nicht angelegt werden." };
   }
 
@@ -256,9 +270,15 @@ export async function deleteSet(
   setId: string
 ): Promise<ActionResult<null>> {
   const supabase = await createServerSupabase();
-  const { error } = await supabase.from("sets").delete().eq("id", setId);
+  const { data, error } = await supabase
+    .from("sets")
+    .delete()
+    .eq("id", setId)
+    .select("id");
 
-  if (error) return { ok: false, error: "Satz konnte nicht gelöscht werden." };
+  if (error || !data || data.length === 0) {
+    return { ok: false, error: "Satz konnte nicht gelöscht werden." };
+  }
 
   revalidatePath(`/workout/${workoutId}`);
   return { ok: true, data: null };
