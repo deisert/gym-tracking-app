@@ -57,6 +57,9 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     .eq("id", workoutId)
     .maybeSingle();
 
+  if (error) {
+    console.error("getWorkoutDetail: failed to load workout", { workoutId }, error);
+  }
   if (error || !data) return null;
 
   const raw = data as unknown as RawWorkout;
@@ -95,6 +98,9 @@ export async function listRecentWorkouts(limit: number): Promise<WorkoutSummary[
     .order("created_at", { ascending: false })
     .limit(limit);
 
+  if (error) {
+    console.error("listRecentWorkouts: failed to load workouts", { limit }, error);
+  }
   if (error || !data) return [];
 
   return (data as unknown as RawWorkout[]).map((w) => {
@@ -119,6 +125,9 @@ export async function countWorkoutsSince(sinceDate: string): Promise<number> {
     .select("id", { count: "exact", head: true })
     .gte("performed_on", sinceDate);
 
-  if (error) return 0;
+  if (error) {
+    console.error("countWorkoutsSince: failed to count workouts", { sinceDate }, error);
+    return 0;
+  }
   return count ?? 0;
 }

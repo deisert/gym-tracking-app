@@ -19,6 +19,11 @@ function toSetRecord(raw: RawSet): SetRecord {
   };
 }
 
+/** Escapes `%`, `_` and `\` so an `ilike` pattern matches the literal input. */
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 /**
  * Non-archived exercises matching `query`, most recently used first.
  *
@@ -37,10 +42,13 @@ export async function searchExercises(query: string): Promise<ExerciseOption[]> 
     .eq("is_archived", false);
 
   if (trimmed.length > 0) {
-    exerciseQuery = exerciseQuery.ilike("name", `%${trimmed}%`);
+    exerciseQuery = exerciseQuery.ilike("name", `%${escapeLikePattern(trimmed)}%`);
   }
 
-  const [{ data: exercises }, { data: usage }] = await Promise.all([
+  const [
+    { data: exercises, error: exercisesError },
+    { data: usage, error: usageError },
+  ] = await Promise.all([
     exerciseQuery.order("name", { ascending: true }),
     supabase
       .from("workout_exercises")
@@ -48,6 +56,13 @@ export async function searchExercises(query: string): Promise<ExerciseOption[]> 
       .order("created_at", { ascending: false })
       .limit(200),
   ]);
+
+  if (exercisesError) {
+    console.error("searchExercises: failed to load exercises", { query }, exercisesError);
+  }
+  if (usageError) {
+    console.error("searchExercises: failed to load exercise usage", { query }, usageError);
+  }
 
   if (!exercises) return [];
 
@@ -95,6 +110,13 @@ export async function getLastPerformances(
     .neq("workout_id", excludeWorkoutId)
     .lte("workouts.performed_on", beforeDate);
 
+  if (error) {
+    console.error(
+      "getLastPerformances: failed to load last performances",
+      { exerciseIds, beforeDate, excludeWorkoutId },
+      error
+    );
+  }
   if (error || !data) return result;
 
   type Row = {
