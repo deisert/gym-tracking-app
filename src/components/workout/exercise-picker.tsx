@@ -47,6 +47,14 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
     (option) => option.name.toLowerCase() === trimmedQuery.toLowerCase()
   );
 
+  function handleOpenChange(open: boolean) {
+    setIsOpen(open);
+    // Dismissing via Escape or the backdrop bypasses addExisting/createAndAdd,
+    // so this is the only place a close-without-success can clear a stale
+    // error before the sheet is reopened for an unrelated exercise.
+    if (!open) setError(null);
+  }
+
   function addExisting(exerciseId: string) {
     startTransition(async () => {
       const result = await addExerciseToWorkout(workoutId, exerciseId);
@@ -62,6 +70,10 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
 
   function createAndAdd() {
     startTransition(async () => {
+      // If findOrCreateExercise succeeds but addExerciseToWorkout below fails,
+      // the exercise is left in the library unlinked to this workout. That's
+      // fine: a retry re-resolves the same name idempotently via the
+      // server's case-insensitive lookup instead of creating a duplicate.
       const created = await findOrCreateExercise(trimmedQuery);
       if (!created.ok) {
         setError(created.error);
@@ -88,7 +100,7 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
         Übung hinzufügen
       </Button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="inset-x-0 bottom-0 top-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-b-none rounded-t-2xl">
         <DialogHeader>
           <DialogTitle>Übung wählen</DialogTitle>
@@ -97,7 +109,10 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
         <Input
           autoFocus
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setError(null);
+          }}
           placeholder="Suchen oder neu anlegen"
           aria-label="Übung suchen"
         />

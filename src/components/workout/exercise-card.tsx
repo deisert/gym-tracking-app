@@ -31,7 +31,7 @@ export function ExerciseCard({ workoutId, workoutExercise, lastSummary }: Props)
           variant="ghost"
           size="sm"
           disabled={isPending}
-          className="text-muted-foreground"
+          className="min-h-11 text-muted-foreground"
           onClick={() =>
             startTransition(async () => {
               await removeWorkoutExercise(workoutId, workoutExercise.id);
