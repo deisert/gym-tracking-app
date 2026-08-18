@@ -31,9 +31,16 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
     // Debounced so typing does not queue one action per keystroke — this
     // Next.js version dispatches server actions sequentially per client.
     const timer = setTimeout(() => {
-      searchExercisesAction(query).then((result) => {
-        if (!cancelled) setOptions(result);
-      });
+      searchExercisesAction(query)
+        .then((result) => {
+          if (!cancelled) setOptions(result);
+        })
+        .catch((cause) => {
+          // Without this the rejection is unhandled and the list silently keeps
+          // showing results for an older query.
+          console.error("ExercisePicker: search failed", { query }, cause);
+          if (!cancelled) setError("Übungen konnten nicht geladen werden.");
+        });
     }, 150);
 
     return () => {
@@ -51,8 +58,13 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
     setIsOpen(open);
     // Dismissing via Escape or the backdrop bypasses addExisting/createAndAdd,
     // so this is the only place a close-without-success can clear a stale
-    // error before the sheet is reopened for an unrelated exercise.
-    if (!open) setError(null);
+    // error before the sheet is reopened for an unrelated exercise. The
+    // options go too: the debounced search only runs while the sheet is open,
+    // so a reopen would otherwise flash the previous filter's results first.
+    if (!open) {
+      setError(null);
+      setOptions([]);
+    }
   }
 
   function addExisting(exerciseId: string) {
@@ -101,7 +113,10 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="inset-x-0 bottom-0 top-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-b-none rounded-t-2xl">
+      {/* `sm:max-w-md` is not redundant: DialogContent ships `sm:max-w-sm`,
+          which survives twMerge (different variant group) and would shrink the
+          bottom sheet to 384px on anything wider than 640px. */}
+      <DialogContent className="inset-x-0 bottom-0 top-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-b-none rounded-t-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Übung wählen</DialogTitle>
         </DialogHeader>

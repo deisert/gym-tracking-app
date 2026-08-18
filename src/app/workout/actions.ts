@@ -14,7 +14,19 @@ import {
   workoutMetaSchema,
 } from "@/lib/validation";
 
-export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
+/**
+ * `kind` tells the caller whether retrying could ever help.
+ *
+ * "validation" is permanent — the input itself is wrong, so the client must
+ * show the message and stop retrying. "transient" is a network/RLS/db failure
+ * that the same input may well survive on a second attempt. Callers that do
+ * not care may ignore it; it is optional so existing failure sites stay valid.
+ */
+export type ActionFailureKind = "validation" | "transient";
+
+export type ActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; kind?: ActionFailureKind };
 
 const SAVE_FAILED = "Speichern fehlgeschlagen – wird automatisch wiederholt.";
 const NOT_SIGNED_IN = "Nicht angemeldet.";
@@ -209,7 +221,7 @@ export async function addSet(
 ): Promise<ActionResult<SetRecord>> {
   const parsed = setInputSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Prüfe Gewicht und Wiederholungen." };
+    return { ok: false, error: "Prüfe Gewicht und Wiederholungen.", kind: "validation" };
   }
 
   const supabase = await createServerSupabase();
@@ -231,7 +243,7 @@ export async function addSet(
     .select(SET_COLUMNS)
     .single();
 
-  if (error || !data) return { ok: false, error: SAVE_FAILED };
+  if (error || !data) return { ok: false, error: SAVE_FAILED, kind: "transient" };
 
   revalidatePath(`/workout/${workoutId}`);
   return { ok: true, data: toSetRecord(data as RawSet) };
@@ -244,7 +256,7 @@ export async function updateSet(
 ): Promise<ActionResult<SetRecord>> {
   const parsed = setInputSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Prüfe Gewicht und Wiederholungen." };
+    return { ok: false, error: "Prüfe Gewicht und Wiederholungen.", kind: "validation" };
   }
 
   const supabase = await createServerSupabase();
@@ -259,7 +271,7 @@ export async function updateSet(
     .select(SET_COLUMNS)
     .single();
 
-  if (error || !data) return { ok: false, error: SAVE_FAILED };
+  if (error || !data) return { ok: false, error: SAVE_FAILED, kind: "transient" };
 
   revalidatePath(`/workout/${workoutId}`);
   return { ok: true, data: toSetRecord(data as RawSet) };
@@ -277,7 +289,7 @@ export async function deleteSet(
     .select("id");
 
   if (error || !data || data.length === 0) {
-    return { ok: false, error: "Satz konnte nicht gelöscht werden." };
+    return { ok: false, error: "Satz konnte nicht gelöscht werden.", kind: "transient" };
   }
 
   revalidatePath(`/workout/${workoutId}`);

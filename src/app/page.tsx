@@ -8,7 +8,16 @@ import { countWorkoutsSince, listRecentWorkouts } from "@/lib/data/workouts";
 import { formatPerformedOn, startOfWeekMonday, todayInAppTimezone } from "@/lib/dates";
 import { createServerSupabase } from "@/lib/supabase/server";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  // A Promise in this Next.js version — see `src/app/login/page.tsx`.
+  searchParams: Promise<{ error?: string }>;
+}) {
+  // `startWorkout` redirects here with ?error=start when the insert fails.
+  // Without reading it, the app's primary action dead-ends on a silent screen.
+  const { error } = await searchParams;
+
   const supabase = await createServerSupabase();
   const { data: profile } = await supabase
     .from("profiles")
@@ -47,6 +56,11 @@ export default async function HomePage() {
 
       <div className="mt-6">
         <StartWorkoutButton />
+        {error === "start" && (
+          <p className="mt-2 text-sm text-destructive">
+            Workout konnte nicht gestartet werden – versuch es noch einmal.
+          </p>
+        )}
       </div>
 
       <section className="mt-8">

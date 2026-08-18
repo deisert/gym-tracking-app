@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { addSet, deleteSet, updateSet } from "@/app/workout/actions";
+import type { ActionFailureKind } from "@/app/workout/actions";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
-import { ghostForPosition, type GhostValue } from "@/lib/sets";
+import { formatWeight, ghostForPosition, type GhostValue } from "@/lib/sets";
 import type { LastPerformance, SetRecord } from "@/lib/types";
+
+/** How long a successful save keeps its check before the row goes quiet again. */
+const SAVED_CHECK_MS = 1000;
 
 /** A row as the user sees it: server truth plus whatever they are typing. */
 type DraftRow = {
@@ -17,17 +21,51 @@ type DraftRow = {
   reps: string;
   isWarmup: boolean;
   status: SaveStatus;
+  /** The server's German failure copy, shown beneath the row. */
+  error: string | null;
+  /** "validation" suppresses both the automatic and the manual retry. */
+  errorKind: ActionFailureKind | null;
 };
 
 function toDraft(set: SetRecord): DraftRow {
   return {
     key: set.id,
     id: set.id,
-    weight: String(set.weight_kg),
+    // formatWeight, not String: a saved 82.5 must read "82,5" in the input,
+    // matching its own ghost placeholder. `parseRow` takes the comma back.
+    weight: formatWeight(set.weight_kg),
     reps: String(set.reps),
     isWarmup: set.is_warmup,
     status: "idle",
+    error: null,
+    errorKind: null,
   };
+}
+
+/** A row that is untouched and ghosted, so one tap can turn the ghost real. */
+function canConfirmGhost(row: DraftRow, ghost: GhostValue | null): boolean {
+  return (
+    ghost !== null &&
+    row.status === "idle" &&
+    row.id === null &&
+    row.weight === "" &&
+    row.reps === ""
+  );
+}
+
+/**
+ * A row with typed content that has never reached the server.
+ *
+ * Without this the row renders an empty status slot — indistinguishable from a
+ * row loaded from the database, so a half-filled row looks saved and then
+ * vanishes on reload (`CONCEPT.md` §2.8).
+ */
+function isUnsaved(row: DraftRow): boolean {
+  return (
+    row.id === null &&
+    row.status === "idle" &&
+    (row.weight.trim() !== "" || row.reps.trim() !== "")
+  );
 }
 
 function parseRow(row: DraftRow) {
@@ -89,21 +127,29 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
   const inFlightRef = useRef<Set<string>>(new Set());
   /** Keys that got a new commit while already in flight; re-dispatched once the in-flight one settles. */
   const pendingRef = useRef<Set<string>>(new Set());
-  /** Scheduled single-retry timers, keyed by row, so a later event can cancel one still pending. */
-  const retryTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /**
+   * At most one scheduled timer per row: either the single automatic retry or
+   * the check-clearing timer after a successful save. The two can never be
+   * outstanding at the same time (a save that failed produced no check, and a
+   * fresh commit clears whatever was scheduled), so one map serves both and a
+   * later event can always cancel what is pending for that row.
+   */
+  const rowTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Monotonic source of draft keys — `Date.now()` collides within a millisecond. */
+  const draftSeqRef = useRef(0);
 
-  const clearRetryTimer = useCallback((key: string) => {
-    const timer = retryTimersRef.current.get(key);
+  const clearRowTimer = useCallback((key: string) => {
+    const timer = rowTimersRef.current.get(key);
     if (timer) {
       clearTimeout(timer);
-      retryTimersRef.current.delete(key);
+      rowTimersRef.current.delete(key);
     }
   }, []);
 
-  // Cancel every outstanding retry timer on unmount — none of them may fire
-  // an uncontrolled dispatch after this component is gone.
+  // Cancel every outstanding timer on unmount — none of them may fire an
+  // uncontrolled dispatch or state write after this component is gone.
   useEffect(() => {
-    const timers = retryTimersRef.current;
+    const timers = rowTimersRef.current;
     return () => {
       timers.forEach((timer) => clearTimeout(timer));
       timers.clear();
@@ -128,8 +174,9 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
   // without a forward reference.
   const commit = useCallback(
     function commit(key: string) {
-      // A fresh commit supersedes any automatic retry still waiting on this row.
-      clearRetryTimer(key);
+      // A fresh commit supersedes anything still scheduled for this row —
+      // an automatic retry, or the check left by the previous save.
+      clearRowTimer(key);
 
       const row = rowsRef.current.find((candidate) => candidate.key === key);
       if (!row) return;
@@ -160,7 +207,7 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
       const wasNewRow = row.id === null;
       const rowId = row.id;
 
-      patch(key, { status: "saving" });
+      patch(key, { status: "saving", error: null, errorKind: null });
 
       startTransition(async () => {
         const result = rowId
@@ -174,7 +221,22 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
 
           const stillPresent = rowsRef.current.some((candidate) => candidate.key === key);
           if (stillPresent) {
-            patch(key, { id: result.data.id, status: "saved" });
+            patch(key, {
+              id: result.data.id,
+              status: "saved",
+              error: null,
+              errorKind: null,
+            });
+
+            // The check is a confirmation, not a permanent badge: leaving it
+            // makes rows saved this session look different from identical
+            // rows loaded from the server. Let it fade back to idle.
+            const savedTimer = setTimeout(() => {
+              rowTimersRef.current.delete(key);
+              const current = rowsRef.current.find((candidate) => candidate.key === key);
+              if (current?.status === "saved") patch(key, { status: "idle" });
+            }, SAVED_CHECK_MS);
+            rowTimersRef.current.set(key, savedTimer);
           } else if (wasNewRow) {
             // The row was deleted client-side while this first save was still
             // in flight. The server now holds a set nobody can see — clean it
@@ -184,16 +246,20 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
             });
           }
         } else {
-          patch(key, { status: "error" });
+          const kind = result.kind ?? "transient";
+          patch(key, { status: "error", error: result.error, errorKind: kind });
 
-          // Exactly one automatic retry, then the row waits for a tap.
-          if (!retriedRef.current.has(key)) {
+          // A validation rejection is permanent: the same numbers will be
+          // rejected again, so retrying only hides the message that says what
+          // to fix. Only a transient failure gets the automatic retry —
+          // exactly one, after which the row waits for a tap.
+          if (kind !== "validation" && !retriedRef.current.has(key)) {
             retriedRef.current.add(key);
             const timer = setTimeout(() => {
-              retryTimersRef.current.delete(key);
+              rowTimersRef.current.delete(key);
               commit(key);
             }, 2000);
-            retryTimersRef.current.set(key, timer);
+            rowTimersRef.current.set(key, timer);
           }
         }
 
@@ -204,25 +270,72 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
         }
       });
     },
-    [clearRetryTimer, patch, workoutExerciseId, workoutId]
+    [clearRowTimer, patch, workoutExerciseId, workoutId]
+  );
+
+  /**
+   * A field edit, with one extra rule: blanking a field must clear a failure.
+   *
+   * `commit` refuses to dispatch a row with an empty field, so an error status
+   * left standing after a blank is a dot that explains nothing and a retry tap
+   * that can never do anything.
+   */
+  const changeField = useCallback(
+    (key: string, changes: Partial<DraftRow>) => {
+      const row = rowsRef.current.find((candidate) => candidate.key === key);
+      const next = row ? { ...row, ...changes } : null;
+      const isBlank =
+        next !== null && (next.weight.trim() === "" || next.reps.trim() === "");
+
+      if (next && isBlank && next.status === "error") {
+        clearRowTimer(key);
+        retriedRef.current.delete(key);
+        patch(key, { ...changes, status: "idle", error: null, errorKind: null });
+        return;
+      }
+
+      patch(key, changes);
+    },
+    [clearRowTimer, patch]
+  );
+
+  /**
+   * One-tap ghost confirmation (spec §8): turn the placeholder into a value.
+   *
+   * Patch then commit synchronously, exactly as the warm-up toggle does —
+   * `setRows` writes `rowsRef.current` before `setRowsState`, so `commit`
+   * reads the numbers just written rather than the pre-tap blanks.
+   */
+  const confirmGhost = useCallback(
+    (key: string, ghost: GhostValue) => {
+      patch(key, {
+        weight: formatWeight(ghost.weight_kg),
+        reps: String(ghost.reps),
+      });
+      commit(key);
+    },
+    [commit, patch]
   );
 
   function addRow() {
+    draftSeqRef.current += 1;
     setRows((current) => [
       ...current,
       {
-        key: `draft-${Date.now()}`,
+        key: `draft-${draftSeqRef.current}`,
         id: null,
         weight: "",
         reps: "",
         isWarmup: false,
         status: "idle",
+        error: null,
+        errorKind: null,
       },
     ]);
   }
 
   function removeRow(key: string) {
-    clearRetryTimer(key);
+    clearRowTimer(key);
 
     const row = rowsRef.current.find((candidate) => candidate.key === key);
     setRows((current) => current.filter((candidate) => candidate.key !== key));
@@ -240,26 +353,37 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      {rows.map((row, index) => (
-        <SetRow
-          key={row.key}
-          index={index}
-          weight={row.weight}
-          reps={row.reps}
-          isWarmup={row.isWarmup}
-          ghost={ghostFor(rows, lastPerformance, index)}
-          status={row.status}
-          onWeightChange={(value) => patch(row.key, { weight: value })}
-          onRepsChange={(value) => patch(row.key, { reps: value })}
-          onCommit={() => commit(row.key)}
-          onToggleWarmup={() => {
-            patch(row.key, { isWarmup: !row.isWarmup });
-            commit(row.key);
-          }}
-          onDelete={() => removeRow(row.key)}
-          onRetry={() => commit(row.key)}
-        />
-      ))}
+      {rows.map((row, index) => {
+        const ghost = ghostFor(rows, lastPerformance, index);
+
+        return (
+          <SetRow
+            key={row.key}
+            index={index}
+            weight={row.weight}
+            reps={row.reps}
+            isWarmup={row.isWarmup}
+            ghost={ghost}
+            status={row.status}
+            error={row.error}
+            canRetry={row.errorKind !== "validation"}
+            canConfirmGhost={canConfirmGhost(row, ghost)}
+            isUnsaved={isUnsaved(row)}
+            onWeightChange={(value) => changeField(row.key, { weight: value })}
+            onRepsChange={(value) => changeField(row.key, { reps: value })}
+            onCommit={() => commit(row.key)}
+            onToggleWarmup={() => {
+              patch(row.key, { isWarmup: !row.isWarmup });
+              commit(row.key);
+            }}
+            onDelete={() => removeRow(row.key)}
+            onRetry={() => commit(row.key)}
+            onConfirmGhost={() => {
+              if (ghost) confirmGhost(row.key, ghost);
+            }}
+          />
+        );
+      })}
 
       <Button
         type="button"
