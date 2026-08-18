@@ -3,17 +3,24 @@
 import { useTransition } from "react";
 
 import { removeWorkoutExercise } from "@/app/workout/actions";
+import { SetList } from "@/components/workout/set-list";
 import { Button } from "@/components/ui/button";
-import type { WorkoutExerciseDetail } from "@/lib/types";
+import type { LastPerformance, WorkoutExerciseDetail } from "@/lib/types";
 
 type Props = {
   workoutId: string;
   workoutExercise: WorkoutExerciseDetail;
   /** "12. Aug: 80 × 8 · 82,5 × 6", or null when there is no previous session. */
   lastSummary: string | null;
+  lastPerformance: LastPerformance;
 };
 
-export function ExerciseCard({ workoutId, workoutExercise, lastSummary }: Props) {
+export function ExerciseCard({
+  workoutId,
+  workoutExercise,
+  lastSummary,
+  lastPerformance,
+}: Props) {
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -41,6 +48,13 @@ export function ExerciseCard({ workoutId, workoutExercise, lastSummary }: Props)
           Entfernen
         </Button>
       </header>
+
+      <SetList
+        workoutId={workoutId}
+        workoutExerciseId={workoutExercise.id}
+        sets={workoutExercise.sets}
+        lastPerformance={lastPerformance}
+      />
     </article>
   );
 }
