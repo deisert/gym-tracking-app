@@ -88,7 +88,7 @@ export function SetRow({
         W
       </button>
 
-      <span className="w-6 text-center" aria-live="polite">
+      <span className="flex min-w-6 items-center justify-center" aria-live="polite">
         {status === "saving" && <span className="text-muted-foreground">…</span>}
         {status === "saved" && (
           <span className="text-primary" aria-label="Gespeichert">
@@ -100,7 +100,7 @@ export function SetRow({
             type="button"
             onClick={onRetry}
             aria-label="Erneut versuchen"
-            className="text-[hsl(38_92%_55%)]"
+            className="flex min-h-11 min-w-11 items-center justify-center text-[hsl(38_92%_55%)]"
           >
             ●
           </button>
@@ -111,7 +111,7 @@ export function SetRow({
         type="button"
         onClick={onDelete}
         aria-label={`Satz ${index + 1} löschen`}
-        className="min-h-12 min-w-8 text-muted-foreground"
+        className="min-h-12 min-w-11 text-muted-foreground"
       >
         ×
       </button>
