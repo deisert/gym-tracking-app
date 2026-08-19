@@ -1,0 +1,25 @@
+# Deployment TODOs
+
+Manual steps left over from the email+name signup work (PRs #2, #3). Neither
+can be done by Claude from this session — see reasons below.
+
+- [ ] **Set `NEXT_PUBLIC_SITE_URL`** in Vercel (Project → Settings →
+      Environment Variables) to the real deployed origin, then redeploy.
+      Without it, magic-link emails point at `127.0.0.1:3000` instead of the
+      live site.
+- [ ] **Apply the new migration** against the real Supabase project:
+      `supabase link` → `supabase db push` (or paste
+      `supabase/migrations/20260819000001_profile_on_signup.sql` into the
+      Studio SQL editor). Without it, signup won't auto-create the
+      `profiles` row for new users.
+
+## Why Claude can't do these
+
+- **Vercel**: the connector is connected and authorized
+  (`ListConnectors` → connected: true), and `list_teams` sees "Dominik's
+  projects" — but `list_projects`/`get_project` on that team both come back
+  empty/404. Team-level OAuth is granted; project-level data isn't, which
+  points at a per-project access grant on Vercel's side (separate from the
+  claude.ai connector authorization) rather than a broken connection.
+- **Supabase**: the MCP server needs an OAuth flow that can't be completed
+  in this non-interactive session.
