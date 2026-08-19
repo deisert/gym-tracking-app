@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { exerciseNameSchema, setInputSchema, workoutMetaSchema } from "@/lib/validation";
+import {
+  authEmailSchema,
+  authNameSchema,
+  exerciseNameSchema,
+  setInputSchema,
+  workoutMetaSchema,
+} from "@/lib/validation";
 
 describe("setInputSchema", () => {
   it("accepts a normal working set", () => {
@@ -49,6 +55,35 @@ describe("exerciseNameSchema", () => {
 
   it("rejects names longer than 80 characters", () => {
     expect(exerciseNameSchema.safeParse("x".repeat(81)).success).toBe(false);
+  });
+});
+
+describe("authEmailSchema", () => {
+  it("trims and lowercases", () => {
+    expect(authEmailSchema.parse("  Domi@Example.com  ")).toBe("domi@example.com");
+  });
+
+  it("rejects a malformed address", () => {
+    expect(authEmailSchema.safeParse("not-an-email").success).toBe(false);
+  });
+
+  it("rejects an empty string", () => {
+    expect(authEmailSchema.safeParse("").success).toBe(false);
+  });
+});
+
+describe("authNameSchema", () => {
+  it("trims surrounding whitespace", () => {
+    expect(authNameSchema.parse("  Dominik  ")).toBe("Dominik");
+  });
+
+  it("rejects an empty or whitespace-only name", () => {
+    expect(authNameSchema.safeParse("").success).toBe(false);
+    expect(authNameSchema.safeParse("   ").success).toBe(false);
+  });
+
+  it("rejects names longer than 80 characters", () => {
+    expect(authNameSchema.safeParse("x".repeat(81)).success).toBe(false);
   });
 });
 
