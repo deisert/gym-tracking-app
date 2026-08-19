@@ -27,6 +27,10 @@ export type SetInput = z.infer<typeof setInputSchema>;
 
 export const exerciseNameSchema = z.string().trim().min(1).max(80);
 
+// Auth: email + display name only (CONCEPT.md open question #1 — magic-link signup).
+export const authEmailSchema = z.string().trim().toLowerCase().email().max(255);
+export const authNameSchema = z.string().trim().min(1).max(80);
+
 export const workoutMetaSchema = z.object({
   performed_on: z.string().refine(isRealIsoDate),
   category: z.string().trim().max(40).nullable(),
