@@ -248,6 +248,16 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# signInWithOtp (used for both signup and returning-user login, see
+# src/app/login/actions.ts) always sends this template. The default one
+# links to Supabase's own hosted /auth/v1/verify endpoint, which redirects
+# back with the session in a URL *fragment* — invisible to a server-side
+# route handler. Point it at our own /auth/confirm with token_hash + type
+# in the query string instead, which verifyOtp() can read.
+[auth.email.template.magic_link]
+subject = "Dein Anmeldelink für GymTrack"
+content_path = "./supabase/templates/magic_link.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true
