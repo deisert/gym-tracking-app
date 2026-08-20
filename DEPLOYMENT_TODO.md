@@ -3,16 +3,16 @@
 Manual steps left over from the email+name signup work (PRs #2, #3). Neither
 can be done by Claude from this session — see reasons below.
 
-- [ ] **Set `NEXT_PUBLIC_SITE_URL`** in Vercel (Project → Settings →
+- [x] **Set `NEXT_PUBLIC_SITE_URL`** in Vercel (Project → Settings →
       Environment Variables) to the real deployed origin, then redeploy.
       Without it, magic-link emails point at `127.0.0.1:3000` instead of the
       live site.
-- [ ] **Apply the new migration** against the real Supabase project:
+- [x] **Apply the new migration** against the real Supabase project:
       `supabase link` → `supabase db push` (or paste
       `supabase/migrations/20260819000001_profile_on_signup.sql` into the
       Studio SQL editor). Without it, signup won't auto-create the
       `profiles` row for new users.
-- [ ] **Enable email signups**: Supabase Dashboard → Authentication →
+- [x] **Enable email signups**: Supabase Dashboard → Authentication →
       Sign In / Providers → Email → "Allow new users to sign up". Confirmed
       via Auth Logs — `POST /auth/v1/otp` returns 422, consistent with
       signups being disabled project-wide.
