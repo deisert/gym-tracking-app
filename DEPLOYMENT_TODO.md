@@ -16,6 +16,14 @@ can be done by Claude from this session — see reasons below.
       Sign In / Providers → Email → "Allow new users to sign up". Confirmed
       via Auth Logs — `POST /auth/v1/otp` returns 422, consistent with
       signups being disabled project-wide.
+- [ ] **Fix Supabase Auth URL Configuration**: Dashboard → Authentication →
+      URL Configuration — set Site URL to
+      `https://gym-tracking-app-kohl.vercel.app` and add
+      `https://gym-tracking-app-kohl.vercel.app/**` to Redirect URLs.
+      Confirmed via Auth Logs — the emailed link's `redirect_to` silently
+      fell back to a different (stale) domain's bare `/`, skipping
+      `/auth/confirm` entirely, because the real domain wasn't allow-listed.
+      That's why signup confirmation bounces back to `/login`.
 
 ## Why Claude can't do these
 
