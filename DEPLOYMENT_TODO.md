@@ -12,6 +12,10 @@ can be done by Claude from this session — see reasons below.
       `supabase/migrations/20260819000001_profile_on_signup.sql` into the
       Studio SQL editor). Without it, signup won't auto-create the
       `profiles` row for new users.
+- [ ] **Enable email signups**: Supabase Dashboard → Authentication →
+      Sign In / Providers → Email → "Allow new users to sign up". Confirmed
+      via Auth Logs — `POST /auth/v1/otp` returns 422, consistent with
+      signups being disabled project-wide.
 
 ## Why Claude can't do these
 
