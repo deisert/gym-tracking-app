@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 
 import { removeWorkoutExercise } from "@/app/workout/actions";
 import { SetList } from "@/components/workout/set-list";
-import { Button } from "@/components/ui/button";
+import { SwipeableRow, SwipeGroupProvider } from "@/components/ui/swipeable-row";
 import type { LastPerformance, WorkoutExerciseDetail } from "@/lib/types";
 
 type Props = {
@@ -24,37 +24,39 @@ export function ExerciseCard({
   const [isPending, startTransition] = useTransition();
   const [removeError, setRemoveError] = useState<string | null>(null);
 
+  function remove() {
+    // A tap on the revealed button while a previous removal is still in
+    // flight would otherwise dispatch a second one for the same exercise.
+    if (isPending) return;
+    startTransition(async () => {
+      const result = await removeWorkoutExercise(workoutId, workoutExercise.id);
+      setRemoveError(result.ok ? null : result.error);
+    });
+  }
+
   return (
     <article className="rounded-xl bg-card p-4">
-      <header className="flex items-start justify-between gap-2">
-        <div>
-          <h3 className="font-medium">{workoutExercise.exercise.name}</h3>
-          {lastSummary && (
-            <p className="mt-1 text-sm text-muted-foreground tabular-nums">{lastSummary}</p>
-          )}
-          {/* A dropped delete (RLS filtered it, or the network went) otherwise
-              leaves the card sitting there with nothing said. */}
-          {removeError && (
-            <p className="mt-1 text-sm text-destructive">{removeError}</p>
-          )}
-        </div>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isPending}
-          className="min-h-11 text-muted-foreground"
-          onClick={() =>
-            startTransition(async () => {
-              const result = await removeWorkoutExercise(workoutId, workoutExercise.id);
-              setRemoveError(result.ok ? null : result.error);
-            })
-          }
+      <SwipeGroupProvider>
+        <SwipeableRow
+          id={workoutExercise.id}
+          deleteLabel={`${workoutExercise.exercise.name} entfernen`}
+          onDelete={remove}
         >
-          Entfernen
-        </Button>
-      </header>
+          <header className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="font-medium">{workoutExercise.exercise.name}</h3>
+              {lastSummary && (
+                <p className="mt-1 text-sm text-muted-foreground tabular-nums">{lastSummary}</p>
+              )}
+              {/* A dropped delete (RLS filtered it, or the network went) otherwise
+                  leaves the card sitting there with nothing said. */}
+              {removeError && (
+                <p className="mt-1 text-sm text-destructive">{removeError}</p>
+              )}
+            </div>
+          </header>
+        </SwipeableRow>
+      </SwipeGroupProvider>
 
       <SetList
         workoutId={workoutId}
