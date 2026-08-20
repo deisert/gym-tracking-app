@@ -115,8 +115,13 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       {/* `sm:max-w-md` is not redundant: DialogContent ships `sm:max-w-sm`,
           which survives twMerge (different variant group) and would shrink the
-          bottom sheet to 384px on anything wider than 640px. */}
-      <DialogContent className="inset-x-0 bottom-0 top-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-b-none rounded-t-2xl sm:max-w-md">
+          sheet to 384px on anything wider than 640px.
+          Anchored to the TOP (not bottom): the search input above autoFocuses,
+          so the mobile keyboard is open from the first frame. A bottom sheet
+          would put the title/search input right where the keyboard covers
+          them; anchoring top keeps both visible above the keyboard instead
+          (user feedback 2026-08-20, screenshot: docs stored in chat history). */}
+      <DialogContent className="inset-x-0 top-0 bottom-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-t-none rounded-b-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Übung wählen</DialogTitle>
         </DialogHeader>
