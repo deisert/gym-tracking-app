@@ -3,6 +3,7 @@ import {
   formatSetSummary,
   formatWeight,
   ghostForPosition,
+  nextActiveKey,
   nextPosition,
 } from "@/lib/sets";
 import type { LastPerformance, SetRecord } from "@/lib/types";
@@ -92,5 +93,19 @@ describe("nextPosition", () => {
 
   it("continues after the highest existing position", () => {
     expect(nextPosition([{ position: 0 }, { position: 2 }])).toBe(3);
+  });
+});
+
+describe("nextActiveKey", () => {
+  it("keeps the current active key when a different row is removed", () => {
+    expect(nextActiveKey(["a", "b"], "a", "c")).toBe("a");
+  });
+
+  it("falls back to the new last row when the active row is removed", () => {
+    expect(nextActiveKey(["a", "b"], "c", "c")).toBe("b");
+  });
+
+  it("falls back to null when the active row was the only row", () => {
+    expect(nextActiveKey([], "a", "a")).toBeNull();
   });
 });

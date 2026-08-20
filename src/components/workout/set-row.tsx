@@ -23,6 +23,8 @@ type Props = {
   canConfirmGhost: boolean;
   /** The row has typed content that has never reached the server. */
   isUnsaved: boolean;
+  /** True when this is the set the user is currently "on" — gets a ring. */
+  isActive: boolean;
   onWeightChange: (value: string) => void;
   onRepsChange: (value: string) => void;
   onCommit: () => void;
@@ -30,6 +32,8 @@ type Props = {
   onDelete: () => void;
   onRetry: () => void;
   onConfirmGhost: () => void;
+  /** Marks this row as current the moment either of its inputs gets focus. */
+  onFocusRow: () => void;
 };
 
 export function SetRow({
@@ -44,6 +48,7 @@ export function SetRow({
   canRetry,
   canConfirmGhost,
   isUnsaved,
+  isActive,
   onWeightChange,
   onRepsChange,
   onCommit,
@@ -51,6 +56,7 @@ export function SetRow({
   onDelete,
   onRetry,
   onConfirmGhost,
+  onFocusRow,
 }: Props) {
   const inputClass =
     "min-h-12 w-full rounded-xl bg-muted px-3 text-2xl font-semibold tabular-nums " +
@@ -58,7 +64,12 @@ export function SetRow({
 
   return (
     <SwipeableRow id={rowId} deleteLabel={`Satz ${index + 1} löschen`} onDelete={onDelete}>
-      <div className="flex flex-col gap-1">
+      <div
+        className={cn(
+          "flex flex-col gap-1 rounded-xl p-1.5 ring-2 transition-shadow",
+          isActive ? "ring-ring" : "ring-transparent"
+        )}
+      >
         <div className="flex items-center gap-2">
           <span
             className={cn(
@@ -75,6 +86,7 @@ export function SetRow({
             value={weight}
             placeholder={ghost ? formatWeight(ghost.weight_kg) : "kg"}
             onChange={(event) => onWeightChange(event.target.value)}
+            onFocus={onFocusRow}
             onBlur={onCommit}
             className={inputClass}
           />
@@ -89,6 +101,7 @@ export function SetRow({
             value={reps}
             placeholder={ghost ? String(ghost.reps) : "Wdh."}
             onChange={(event) => onRepsChange(event.target.value)}
+            onFocus={onFocusRow}
             onBlur={onCommit}
             className={inputClass}
           />
