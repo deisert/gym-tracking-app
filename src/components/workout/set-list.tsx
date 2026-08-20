@@ -6,6 +6,7 @@ import { addSet, deleteSet, updateSet } from "@/app/workout/actions";
 import type { ActionFailureKind } from "@/app/workout/actions";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
+import { SwipeGroupProvider } from "@/components/ui/swipeable-row";
 import { formatWeight, ghostForPosition, nextActiveKey, type GhostValue } from "@/lib/sets";
 import type { LastPerformance, SetRecord } from "@/lib/types";
 
@@ -375,39 +376,42 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
 
   return (
     <div className="mt-3 flex flex-col gap-2">
-      {rows.map((row, index) => {
-        const ghost = ghostFor(rows, lastPerformance, index);
+      <SwipeGroupProvider>
+        {rows.map((row, index) => {
+          const ghost = ghostFor(rows, lastPerformance, index);
 
-        return (
-          <SetRow
-            key={row.key}
-            index={index}
-            weight={row.weight}
-            reps={row.reps}
-            isWarmup={row.isWarmup}
-            ghost={ghost}
-            status={row.status}
-            error={row.error}
-            canRetry={row.errorKind !== "validation"}
-            canConfirmGhost={canConfirmGhost(row, ghost)}
-            isUnsaved={isUnsaved(row)}
-            isActive={row.key === activeKey}
-            onWeightChange={(value) => changeField(row.key, { weight: value })}
-            onRepsChange={(value) => changeField(row.key, { reps: value })}
-            onCommit={() => commit(row.key)}
-            onToggleWarmup={() => {
-              patch(row.key, { isWarmup: !row.isWarmup });
-              commit(row.key);
-            }}
-            onDelete={() => removeRow(row.key)}
-            onRetry={() => commit(row.key)}
-            onConfirmGhost={() => {
-              if (ghost) confirmGhost(row.key, ghost);
-            }}
-            onFocusRow={() => setActiveKey(row.key)}
-          />
-        );
-      })}
+          return (
+            <SetRow
+              key={row.key}
+              rowId={row.key}
+              index={index}
+              weight={row.weight}
+              reps={row.reps}
+              isWarmup={row.isWarmup}
+              ghost={ghost}
+              status={row.status}
+              error={row.error}
+              canRetry={row.errorKind !== "validation"}
+              canConfirmGhost={canConfirmGhost(row, ghost)}
+              isUnsaved={isUnsaved(row)}
+              isActive={row.key === activeKey}
+              onWeightChange={(value) => changeField(row.key, { weight: value })}
+              onRepsChange={(value) => changeField(row.key, { reps: value })}
+              onCommit={() => commit(row.key)}
+              onToggleWarmup={() => {
+                patch(row.key, { isWarmup: !row.isWarmup });
+                commit(row.key);
+              }}
+              onDelete={() => removeRow(row.key)}
+              onRetry={() => commit(row.key)}
+              onConfirmGhost={() => {
+                if (ghost) confirmGhost(row.key, ghost);
+              }}
+              onFocusRow={() => setActiveKey(row.key)}
+            />
+          );
+        })}
+      </SwipeGroupProvider>
 
       <Button
         type="button"
