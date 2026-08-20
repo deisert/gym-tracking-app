@@ -1,7 +1,6 @@
-// src/components/ui/swipeable-row.tsx
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useSwipeToDelete } from "@/lib/use-swipe-to-delete";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
@@ -24,11 +23,8 @@ const SwipeGroupContext = createContext<SwipeGroupContextValue | null>(null);
  */
 export function SwipeGroupProvider({ children }: { children: ReactNode }) {
   const [openId, setOpenId] = useState<string | null>(null);
-  return (
-    <SwipeGroupContext.Provider value={{ openId, setOpenId }}>
-      {children}
-    </SwipeGroupContext.Provider>
-  );
+  const value = useMemo(() => ({ openId, setOpenId }), [openId]);
+  return <SwipeGroupContext.Provider value={value}>{children}</SwipeGroupContext.Provider>;
 }
 
 function useSwipeGroup(id: string) {
@@ -70,8 +66,10 @@ export function SwipeableRow({ id, deleteLabel, onDelete, children, className }:
     onOpenChange,
   });
 
+  // py-0.5 on the wrapper: `overflow-hidden` would otherwise clip the 2px focus
+  // ring of any control sitting flush against its top/bottom edge.
   return (
-    <div className={cn("relative overflow-hidden rounded-xl", className)}>
+    <div className={cn("relative overflow-hidden rounded-xl py-0.5", className)}>
       <div
         className="flex"
         style={{
@@ -81,18 +79,23 @@ export function SwipeableRow({ id, deleteLabel, onDelete, children, className }:
             isDragging || prefersReducedMotion ? "none" : "transform 180ms ease-out",
         }}
       >
-        <div {...rowHandlers} className="min-w-0 flex-1 touch-pan-y">
+        <div {...rowHandlers} className="min-w-0 flex-1 touch-pan-y select-none">
           {children}
         </div>
 
         <button
           type="button"
-          onClick={onDelete}
+          onClick={() => {
+            // Close first: if the delete fails, the row must not stay stuck open
+            // with its error message clipped by the wrapper's `overflow-hidden`.
+            onOpenChange(false);
+            onDelete();
+          }}
           onFocus={() => onOpenChange(true)}
           onBlur={() => onOpenChange(false)}
           aria-label={deleteLabel}
           style={{ width: REVEAL_WIDTH }}
-          className="min-h-12 shrink-0 rounded-xl bg-destructive text-sm font-medium text-destructive-foreground"
+          className="min-h-12 shrink-0 rounded-xl bg-destructive text-sm font-medium text-destructive-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
         >
           Löschen
         </button>

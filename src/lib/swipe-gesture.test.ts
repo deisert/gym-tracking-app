@@ -40,4 +40,12 @@ describe("resolveSwipeOutcome", () => {
   it("treats exactly the commit threshold as a delete", () => {
     expect(resolveSwipeOutcome(-200, 88, 200)).toBe("delete");
   });
+
+  it("documents that resolving against the rubber-banded value instead of raw travel makes the commit threshold nearly unreachable", () => {
+    // 200px commit threshold clamped through an 88px reveal width needs ~424px of
+    // raw finger travel before clamping brings it down to -200 — resolveSwipeOutcome
+    // must always be called with the RAW pointer delta, never with clampDragX's output.
+    expect(resolveSwipeOutcome(clampDragX(-220, 88), 88, 200)).not.toBe("delete");
+    expect(resolveSwipeOutcome(-220, 88, 200)).toBe("delete");
+  });
 });

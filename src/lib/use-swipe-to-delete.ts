@@ -1,4 +1,3 @@
-// src/lib/use-swipe-to-delete.ts
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -41,6 +40,10 @@ export function useSwipeToDelete({
   const pointerIdRef = useRef<number | null>(null);
   const startClientXRef = useRef(0);
   const startDragXRef = useRef(0);
+  // Raw (unclamped) finger travel. `dragX` is rubber-banded by `clampDragX` for
+  // rendering, so resolving the outcome against it would need ~424px of real
+  // travel to reach a -200px commit threshold — wider than a phone screen.
+  const rawDeltaXRef = useRef(0);
 
   // An external open/close — keyboard focus on the delete button, or another
   // row in the same group opening — moves this row even with no pointer down.
@@ -51,10 +54,12 @@ export function useSwipeToDelete({
 
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
+      if (pointerIdRef.current !== null) return;
       if (INTERACTIVE_TAGS.has((event.target as HTMLElement).tagName)) return;
       pointerIdRef.current = event.pointerId;
       startClientXRef.current = event.clientX;
       startDragXRef.current = dragX;
+      rawDeltaXRef.current = dragX;
       setIsDragging(true);
       event.currentTarget.setPointerCapture(event.pointerId);
     },
@@ -65,6 +70,7 @@ export function useSwipeToDelete({
     (event: ReactPointerEvent<HTMLElement>) => {
       if (pointerIdRef.current !== event.pointerId) return;
       const rawDeltaX = startDragXRef.current + (event.clientX - startClientXRef.current);
+      rawDeltaXRef.current = rawDeltaX;
       setDragX(clampDragX(rawDeltaX, revealWidth));
     },
     [revealWidth]
@@ -76,8 +82,14 @@ export function useSwipeToDelete({
       pointerIdRef.current = null;
       setIsDragging(false);
 
-      const outcome = resolveSwipeOutcome(dragX, revealWidth, commitThreshold);
+      const outcome = resolveSwipeOutcome(rawDeltaXRef.current, revealWidth, commitThreshold);
       if (outcome === "delete") {
+        // Reset the rendered offset as well as the group state: when the row is
+        // already closed in the group, `onOpenChange(false)` is a no-op and the
+        // effect above never re-runs, so a *failed* delete would leave the row
+        // translated with its error message clipped by `overflow-hidden`.
+        setDragX(0);
+        onOpenChange(false);
         onDelete();
         return;
       }
@@ -85,7 +97,20 @@ export function useSwipeToDelete({
       onOpenChange(nextOpen);
       setDragX(nextOpen ? -revealWidth : 0);
     },
-    [dragX, revealWidth, commitThreshold, onDelete, onOpenChange]
+    [revealWidth, commitThreshold, onDelete, onOpenChange]
+  );
+
+  // A cancelled gesture must never commit a delete: Android Chrome fires
+  // `pointercancel` when it claims the touch for edge-back or pull-to-refresh,
+  // which looks exactly like a left swipe starting near the screen edge.
+  const cancelDrag = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      if (pointerIdRef.current !== event.pointerId) return;
+      pointerIdRef.current = null;
+      setIsDragging(false);
+      setDragX(isOpen ? -revealWidth : 0);
+    },
+    [isOpen, revealWidth]
   );
 
   return {
@@ -95,7 +120,7 @@ export function useSwipeToDelete({
       onPointerDown,
       onPointerMove,
       onPointerUp: endDrag,
-      onPointerCancel: endDrag,
+      onPointerCancel: cancelDrag,
     },
   };
 }

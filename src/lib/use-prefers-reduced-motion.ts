@@ -14,7 +14,7 @@ function getSnapshot(): boolean {
   return window.matchMedia(QUERY).matches;
 }
 
-/** No `window` on the server — reduced motion is the SSR-safe default to assume nothing, corrected on hydration. */
+/** No `window` on the server; `false` is the safe default until the client corrects it on mount. */
 function getServerSnapshot(): boolean {
   return false;
 }
