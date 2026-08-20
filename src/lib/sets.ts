@@ -34,3 +34,18 @@ export function nextPosition(items: { position: number }[]): number {
   if (items.length === 0) return 0;
   return Math.max(...items.map((i) => i.position)) + 1;
 }
+
+/**
+ * Which row key should carry the "current set" ring after `removedKey` is
+ * deleted from a set list. Untouched unless the removed row was the active
+ * one, in which case it falls back to the new last row (or null if that was
+ * the only row left).
+ */
+export function nextActiveKey(
+  remainingKeys: string[],
+  activeKey: string | null,
+  removedKey: string
+): string | null {
+  if (activeKey !== removedKey) return activeKey;
+  return remainingKeys.length > 0 ? remainingKeys[remainingKeys.length - 1] : null;
+}
