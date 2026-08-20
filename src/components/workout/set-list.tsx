@@ -6,7 +6,7 @@ import { addSet, deleteSet, updateSet } from "@/app/workout/actions";
 import type { ActionFailureKind } from "@/app/workout/actions";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
-import { formatWeight, ghostForPosition, type GhostValue } from "@/lib/sets";
+import { formatWeight, ghostForPosition, nextActiveKey, type GhostValue } from "@/lib/sets";
 import type { LastPerformance, SetRecord } from "@/lib/types";
 
 /** How long a successful save keeps its check before the row goes quiet again. */
@@ -111,6 +111,17 @@ type Props = {
 export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }: Props) {
   const [rows, setRowsState] = useState<DraftRow[]>(() => sets.map(toDraft));
   const [, startTransition] = useTransition();
+
+  /**
+   * The set the user is currently "on" — gets a persistent ring so it's
+   * visible even once focus leaves the input (user feedback 2026-08-20).
+   * Defaults to the last row (the one most likely being worked on), moves to
+   * whichever row is focused, and falls back sensibly when that row is
+   * deleted (see `nextActiveKey`).
+   */
+  const [activeKey, setActiveKey] = useState<string | null>(
+    () => (rows.length > 0 ? rows[rows.length - 1].key : null)
+  );
 
   /**
    * A mirror of `rows` that callbacks can read synchronously.
@@ -319,10 +330,11 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
 
   function addRow() {
     draftSeqRef.current += 1;
+    const key = `draft-${draftSeqRef.current}`;
     setRows((current) => [
       ...current,
       {
-        key: `draft-${draftSeqRef.current}`,
+        key,
         id: null,
         weight: "",
         reps: "",
@@ -332,13 +344,23 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
         errorKind: null,
       },
     ]);
+    // The newly added row is the one about to be filled in — make it current.
+    setActiveKey(key);
   }
 
   function removeRow(key: string) {
     clearRowTimer(key);
 
     const row = rowsRef.current.find((candidate) => candidate.key === key);
-    setRows((current) => current.filter((candidate) => candidate.key !== key));
+    const remaining = rowsRef.current.filter((candidate) => candidate.key !== key);
+    setRows(() => remaining);
+    setActiveKey((current) =>
+      nextActiveKey(
+        remaining.map((candidate) => candidate.key),
+        current,
+        key
+      )
+    );
 
     if (row?.id) {
       const setId = row.id;
@@ -369,6 +391,7 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
             canRetry={row.errorKind !== "validation"}
             canConfirmGhost={canConfirmGhost(row, ghost)}
             isUnsaved={isUnsaved(row)}
+            isActive={row.key === activeKey}
             onWeightChange={(value) => changeField(row.key, { weight: value })}
             onRepsChange={(value) => changeField(row.key, { reps: value })}
             onCommit={() => commit(row.key)}
@@ -381,6 +404,7 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
             onConfirmGhost={() => {
               if (ghost) confirmGhost(row.key, ghost);
             }}
+            onFocusRow={() => setActiveKey(row.key)}
           />
         );
       })}
