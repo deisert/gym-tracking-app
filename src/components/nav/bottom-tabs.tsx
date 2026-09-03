@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Dumbbell } from "lucide-react";
+import { Dumbbell, LayoutDashboard } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/", label: "Heute", Icon: Dumbbell },
-  { href: "/history", label: "Verlauf", Icon: CalendarDays },
+  { href: "/", label: "Verlauf", Icon: Dumbbell },
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
 ];
 
 export function BottomTabs() {
