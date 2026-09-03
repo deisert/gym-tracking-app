@@ -297,6 +297,34 @@ export async function deleteSet(
 }
 
 /**
+ * Deletes a whole workout, and with it every exercise and set of that day.
+ *
+ * No cascade is done by hand: `workout_exercises.workout_id` and
+ * `sets.workout_exercise_id` are both `on delete cascade` (see the init
+ * migration). The `exercises` FK is `on delete restrict`, but that guards
+ * deleting an exercise from the library, not a workout that references one.
+ */
+export async function deleteWorkout(workoutId: string): Promise<ActionResult<null>> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("workouts")
+    .delete()
+    .eq("id", workoutId)
+    .select("id");
+
+  // RLS turns a foreign or missing id into zero deleted rows rather than an
+  // error, so an empty result is a failure just as much as `error` is.
+  if (error || !data || data.length === 0) {
+    return { ok: false, error: "Workout konnte nicht gelöscht werden.", kind: "transient" };
+  }
+
+  // Both lists render workouts, and the dashboard also counts this week's.
+  revalidatePath("/");
+  revalidatePath("/history");
+  return { ok: true, data: null };
+}
+
+/**
  * Search wrapper for the picker.
  *
  * `searchExercises` reaches the server-only Supabase client, so a client

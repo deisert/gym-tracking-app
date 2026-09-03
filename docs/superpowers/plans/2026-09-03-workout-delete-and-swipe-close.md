@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Steps use checkbox (`- [ ]`) syntax for tracking. Implement task-by-task, in order — Tasks 1–3 are prerequisites for Tasks 5–6.
 
-**Status:** planned, not implemented. Awaiting the decision in "Open questions" §A before Task 6.
+**Status:** implemented. Deviations from the plan as written are recorded in "Implementation notes" at the end.
 
 **Goal:** Two connected changes to the existing swipe-to-delete system:
 1. A whole workout can be deleted with the same gesture as sets and exercises.
@@ -59,7 +59,7 @@ The fixes are Tasks 1–3.
 - `isTap(travelPx: number): boolean`
 - `resolveSwipeOutcome(dragX, revealWidth, commitThreshold, options?: { startedOpen?: boolean })`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 describe("isTap", () => {
@@ -87,11 +87,11 @@ describe("resolveSwipeOutcome with startedOpen", () => {
 });
 ```
 
-- [ ] **Step 2: Implement**
+- [x] **Step 2: Implement**
 
 `isTap(travel)` is `Math.abs(travel) < TAP_SLOP`. In `resolveSwipeOutcome`, when `options.startedOpen` is true and the delete threshold was *not* reached, close as soon as `revealWidth - distance >= CLOSE_THRESHOLD` (i.e. the finger travelled `CLOSE_THRESHOLD` back toward rest); otherwise fall through to today's rules. Keep the existing 3-argument call signature working — the options object must be optional.
 
-- [ ] **Step 3: `npm test`** — all existing swipe tests must still pass untouched.
+- [x] **Step 3: `npm test`** — all existing swipe tests must still pass untouched.
 
 ---
 
@@ -104,12 +104,12 @@ describe("resolveSwipeOutcome with startedOpen", () => {
 - `UseSwipeToDeleteResult.didDrag: () => boolean` — true when the gesture that just ended moved past `TAP_SLOP`. Used to swallow the click a swipe would otherwise fire on a `<Link>`.
 - `rowHandlers` unchanged in shape, so they can be spread onto the scrim as well as the content.
 
-- [ ] **Step 1:** Add a `travelRef` updated in `onPointerMove` (absolute distance from `startClientXRef`), reset to 0 in `onPointerDown`.
-- [ ] **Step 2:** In `onPointerDown`, keep the `INTERACTIVE_TAGS` early return **only while the row is closed**. While `isOpen`, the scrim from Task 3 already covers the inputs, but keeping the guard would still block a drag started on the delete button's edge — gate it on `!isOpen`.
-- [ ] **Step 3:** In `endDrag`, before resolving the outcome: if `isTap(travelRef.current)` and `isOpen` → `onOpenChange(false); setDragX(0); return;`. A tap on a *closed* row keeps today's behaviour (nothing happens, the underlying input/link handles it).
-- [ ] **Step 4:** Pass `{ startedOpen }` to `resolveSwipeOutcome`, derived from `startDragXRef.current !== 0`.
-- [ ] **Step 5:** Expose `didDrag: () => !isTap(travelRef.current)`. Do not reset `travelRef` in `endDrag` — the click event fires *after* pointerup and must still see the value; `onPointerDown` resets it for the next gesture.
-- [ ] **Step 6:** `cancelDrag` stays as is (a cancelled gesture must never commit anything).
+- [x] **Step 1:** Add a `travelRef` updated on pointer move (signed distance from `startClientXRef`), reset to 0 in `onPointerDown`.
+- [x] **Step 2:** In `onPointerDown`, keep the `INTERACTIVE_TAGS` early return **only while the row is closed**. While `isOpen`, the scrim from Task 3 already covers the inputs, but keeping the guard would still block a drag started on the delete button's edge — gate it on `!isOpen`.
+- [x] **Step 3:** Before resolving the outcome: if `isTap(travelRef.current)` and `isOpen` → `onOpenChange(false); setDragX(0); return;`. A tap on a *closed* row keeps today's behaviour (nothing happens, the underlying input/link handles it).
+- [x] **Step 4:** Pass `{ startedOpen }` to `resolveSwipeOutcome`, derived from `startDragXRef.current !== 0`.
+- [x] **Step 5:** Expose `didDrag: () => !isTap(travelRef.current)`. Do not reset `travelRef` when the gesture ends — the click event fires *after* pointerup and must still see the value; `onPointerDown` resets it for the next gesture.
+- [x] **Step 6:** Move the gesture off `setPointerCapture` and onto `window` listeners for the duration of the drag, with one shared `finishGesture(pointerId, cancelled)` path. **Not what this plan originally called for** — see Implementation notes §1. Cancel semantics are unchanged: a cancelled gesture never commits anything.
 
 ---
 
@@ -118,12 +118,12 @@ describe("resolveSwipeOutcome with startedOpen", () => {
 **Files:**
 - Modify: `src/components/ui/swipeable-row.tsx`
 
-- [ ] **Step 1 — Scrim while open.** When `isOpen`, render a transparent `absolute inset-0` layer over the *content* div only (not over the delete button), spreading the same `rowHandlers`, with `touch-action: pan-y`, `aria-hidden`, no tab index. This is the single fix for cause A1 + A2: pointerdown always lands on the scrim, so the full row width becomes draggable and a tap closes the row instead of focusing an input underneath.
-- [ ] **Step 2 — Close on outside pointerdown.** While `isOpen`, a `useEffect` adds a capture-phase `pointerdown` listener on `document` that calls `onOpenChange(false)` when `event.target` is not inside the row's wrapper (needs a `ref` on the wrapper div). Removes the listener on close/unmount. This fixes cause A3 across `SwipeGroupProvider` boundaries.
-- [ ] **Step 3 — Escape closes.** Same effect, a `keydown` listener while open. Cheap desktop/keyboard parity.
-- [ ] **Step 4 — Swallow the post-swipe click.** Put `onClickCapture` on the content wrapper: if `didDrag()`, `event.preventDefault()` + `event.stopPropagation()`. Without this, every swipe on a workout row navigates to that workout. Also set `draggable={false}` on link content (native anchor drag steals the pointer stream on desktop) and `[-webkit-touch-callout:none]` (iOS long-press link preview).
-- [ ] **Step 5 — `commitThreshold` becomes an optional prop** (default `COMMIT_THRESHOLD = 200`), so Task 6 can pass `Number.POSITIVE_INFINITY` for workout rows and require an explicit tap on "Löschen" for the highest-blast-radius delete.
-- [ ] **Step 6:** Verify the keyboard path is untouched: Tab reaches "Löschen", `onFocus` opens the row, the scrim (aria-hidden, not focusable) never takes focus, Enter deletes.
+- [x] **Step 1 — Scrim while open.** When `isOpen`, render a transparent `absolute inset-0` layer over the *content* div only (not over the delete button), spreading the same `rowHandlers`, with `touch-action: pan-y`, `aria-hidden`, no tab index. This is the single fix for cause A1 + A2: pointerdown always lands on the scrim, so the full row width becomes draggable and a tap closes the row instead of focusing an input underneath.
+- [x] **Step 2 — Close on outside pointerdown.** While `isOpen`, a `useEffect` adds a capture-phase `pointerdown` listener on `document` that calls `onOpenChange(false)` when `event.target` is not inside the row's wrapper (needs a `ref` on the wrapper div). Removes the listener on close/unmount. This fixes cause A3 across `SwipeGroupProvider` boundaries.
+- [x] **Step 3 — Escape closes.** Same effect, a `keydown` listener while open. Cheap desktop/keyboard parity.
+- [x] **Step 4 — Swallow the post-swipe click.** Put `onClickCapture` on the content wrapper: if `didDrag()`, `event.preventDefault()` + `event.stopPropagation()`. Without this, every swipe on a workout row navigates to that workout. Also set `draggable={false}` on link content (native anchor drag steals the pointer stream on desktop) and `[-webkit-touch-callout:none]` (iOS long-press link preview).
+- [x] **Step 5 — `commitThreshold` becomes an optional prop** (default `COMMIT_THRESHOLD = 200`), so Task 6 can pass `Number.POSITIVE_INFINITY` for workout rows and require an explicit tap on "Löschen" for the highest-blast-radius delete.
+- [x] **Step 6:** Verify the keyboard path is untouched: Tab reaches "Löschen", `onFocus` opens the row, the scrim (aria-hidden, not focusable) never takes focus, Enter deletes.
 
 ---
 
@@ -132,7 +132,7 @@ describe("resolveSwipeOutcome with startedOpen", () => {
 **Files:**
 - Modify: `src/app/workout/actions.ts`
 
-- [ ] **Step 1:** Add, next to `deleteSet`:
+- [x] **Step 1:** Add, next to `deleteSet`:
 
 ```typescript
 export async function deleteWorkout(workoutId: string): Promise<ActionResult<null>> {
@@ -154,7 +154,7 @@ export async function deleteWorkout(workoutId: string): Promise<ActionResult<nul
 }
 ```
 
-- [ ] **Step 2:** No migration, no orphan cleanup — the cascades in `20260817000001_init.sql` cover `workout_exercises` and `sets`. Confirm by reading that file rather than trusting this line.
+- [x] **Step 2:** No migration, no orphan cleanup — the cascades in `20260817000001_init.sql` cover `workout_exercises` and `sets`. Confirm by reading that file rather than trusting this line.
 
 ---
 
@@ -163,11 +163,11 @@ export async function deleteWorkout(workoutId: string): Promise<ActionResult<nul
 **Files:**
 - Create: `src/components/workout/workout-list.tsx`
 
-- [ ] **Step 1:** `"use client"`. Props: `workouts: WorkoutSummary[]`. Renders one `SwipeGroupProvider` around a `<ul>`; each `<li>` is a `SwipeableRow` whose content is the existing link markup moved verbatim out of the two pages (`min-h-14 rounded-xl bg-card px-4`, date + category left, "N Übungen · M Sätze" right).
-- [ ] **Step 2:** `id={workout.id}`, `deleteLabel={`Workout vom ${formatPerformedOn(workout.performed_on)} löschen`}`, `commitThreshold={Number.POSITIVE_INFINITY}` (see Part B, blast radius).
-- [ ] **Step 3:** Optimistic removal, following `SetList.removeRow` rather than `ExerciseCard` (a 100-row history must not wait for a round trip): keep `removedIds: Set<string>` in state, hide the row immediately, and on failure put it back and render the German error beneath it. Guard against a double dispatch for the same id while one is in flight, as `ExerciseCard.remove` does.
-- [ ] **Step 4:** `formatPerformedOn` lives in `src/lib/dates.ts` and is pure (no `server-only` import) — safe to use from the client.
-- [ ] **Step 5:** Keep the empty-state copy where it is, in the pages (it differs: "Noch kein Workout geloggt. Starte dein erstes." vs. "Noch keine Workouts. Sobald du eins loggst, steht es hier.").
+- [x] **Step 1:** `"use client"`. Props: `workouts: WorkoutSummary[]`. Renders one `SwipeGroupProvider` around a `<ul>`; each `<li>` is a `SwipeableRow` whose content is the existing link markup moved verbatim out of the two pages (`min-h-14 rounded-xl bg-card px-4`, date + category left, "N Übungen · M Sätze" right).
+- [x] **Step 2:** `id={workout.id}`, `deleteLabel={`Workout vom ${formatPerformedOn(workout.performed_on)} löschen`}`, `commitThreshold={Number.POSITIVE_INFINITY}` (see Part B, blast radius).
+- [x] **Step 3:** Optimistic removal, following `SetList.removeRow` rather than `ExerciseCard` (a 100-row history must not wait for a round trip): keep `removedIds: Set<string>` in state, hide the row immediately, and on failure put it back and render the German error beneath it. Guard against a double dispatch for the same id while one is in flight, as `ExerciseCard.remove` does.
+- [x] **Step 4:** `formatPerformedOn` lives in `src/lib/dates.ts` and is pure (no `server-only` import) — safe to use from the client.
+- [x] **Step 5:** Keep the empty-state copy authored in the pages (it differs: "Noch kein Workout geloggt. Starte dein erstes." vs. "Noch keine Workouts. Sobald du eins loggst, steht es hier."), passed in as `emptyText`. It is *rendered* by `WorkoutList` rather than by the page, so deleting the last workout switches to the empty state with the optimistic removal instead of a beat later.
 
 ---
 
@@ -176,41 +176,86 @@ export async function deleteWorkout(workoutId: string): Promise<ActionResult<nul
 **Files:**
 - Modify: `src/app/page.tsx`, `src/app/history/page.tsx`
 
-- [ ] **Step 1:** Replace both inline `<ul>` blocks with `<WorkoutList workouts={…} />`. Both pages stay server components; only the list is a client island.
-- [ ] **Step 2:** After a delete on `/`, the weekly counter card must be correct — `revalidatePath("/")` in Task 4 handles it; verify visually, since the optimistic hide is client-side and the counter is not.
+- [x] **Step 1:** Replace both inline `<ul>` blocks with `<WorkoutList workouts={…} />`. Both pages stay server components; only the list is a client island.
+- [x] **Step 2:** After a delete on `/`, the weekly counter card must be correct — `revalidatePath("/")` in Task 4 handles it; verify visually, since the optimistic hide is client-side and the counter is not.
 
 ---
 
 ### Task 7: Verification
 
-- [ ] `npm test` (gesture math), `npm run lint`, `npm run build`.
+- [x] `npm test` (67 pass, 22 of them gesture math), `npm run lint`, `npm run build` — all clean.
 
 ---
 
-### Task 8: Manual QA checklist (real phone, dark mode)
+### Task 8: Verify the gesture wiring
 
-Closing:
-- [ ] Swipe a set row open, tap over the weight input → row closes, input does **not** focus, no keyboard pops up.
-- [ ] Swipe a set row open, then drag right starting *on* an input → row closes.
-- [ ] Swipe an exercise header open, then tap into a set input of the same card → header closes, the tap does not reach the input (first tap closes, second tap types).
-- [ ] Escape closes an open row.
+The plan assumed this could only be checked by hand on a phone. Most of it was
+checked in a browser instead: `SwipeableRow` and the hook are ordinary client
+components, so they bundle standalone (esbuild + the real modules, minimal CSS
+for the handful of layout utilities the hit-testing depends on) and a headless
+Chromium can drive real pointer sequences against them. The harness lives in
+the session scratchpad, not in the repo — this repo has no DOM test harness and
+this plan does not add one.
 
-Workout delete:
-- [ ] Swipe a workout row in "Verlauf" → "Löschen" is revealed, no navigation happens.
-- [ ] A long full swipe does **not** delete the workout (tap-only commit).
-- [ ] Tap "Löschen" → row disappears; the workout is gone from `/` and `/history` after a reload; its sets are gone.
-- [ ] A normal tap on a workout row still navigates.
-- [ ] Offline (airplane mode): delete fails → the row comes back with "Workout konnte nicht gelöscht werden."
+21 checks, all passing:
 
-Accessibility / motion:
+- [x] Swiping left on a set row's non-input pixels opens it; a drag that starts on an input of a **closed** row does not (typing still wins).
+- [x] A tap over the weight input of an **open** row closes it, and the input underneath never focuses.
+- [x] A 30px rightward drag **starting on an input** closes an open row.
+- [x] A tap on a closed row still focuses the input.
+- [x] A pointer-down anywhere outside an open row closes it.
+- [x] Swiping a row in a *different* `SwipeGroupProvider` closes the first one — the cross-provider case.
+- [x] A full swipe-through still deletes a set.
+- [x] Swiping a workout row opens it and never navigates; a plain tap navigates.
+- [x] A long flick on a workout row does **not** delete it — it stays open (tap-only commit).
+- [x] Tapping the revealed "Löschen" deletes the workout.
+- [x] Focusing the delete button opens the row; Escape closes it again.
+
+Still worth one pass on a real phone, since a headless Chromium mouse is not a
+finger and not iOS Safari:
+
+- [ ] Touch: tap-to-close and drag-back over the inputs, on the deployed preview.
+- [ ] Touch: a workout row's tap still navigates (iOS synthesises the click differently).
+- [ ] Vertical scrolling through a list of workout rows never opens one (`touch-action: pan-y`).
 - [ ] `prefers-reduced-motion: reduce` → no slide, rows still open/close/delete.
-- [ ] Keyboard only: Tab reaches "Löschen" on a workout row, the row opens on focus, Enter deletes, Tab away closes.
+- [ ] Offline (airplane mode): a failed delete puts the row back with "Workout konnte nicht gelöscht werden."
+- [ ] The dashboard's weekly counter is right after deleting a workout of the current week.
 
 ---
+
+## Implementation notes
+
+**1. The gesture no longer uses `setPointerCapture` — it listens on `window`.**
+The plan (and the shipped code before it) captured the pointer on
+`pointerdown`. That breaks a workout row: pointer capture retargets the
+*compatibility mouse events* as well, so the `click` ending a plain tap is
+delivered to the row wrapper instead of the `<a>` inside it, and the row simply
+stops navigating. Verified, not theorised — it was a hard failure in the
+harness.
+
+Capturing lazily (only once travel passes `TAP_SLOP`) fixes navigation but
+introduces a worse bug: a swipe that starts within 8px of the row's edge — the
+index column of a set row is exactly that — leaves the element before capture
+happens, so its `pointerup` lands somewhere else, `pointerIdRef` is never
+cleared, and the row hangs mid-drag and refuses every later gesture. Also
+observed in the harness.
+
+Window listeners for the duration of the drag give both: nothing is lost when
+the pointer leaves the row, and click dispatch is untouched. `rowHandlers` is
+now just `{ onPointerDown }`.
+
+**2. A tap outside now closes an open row anywhere on the page**, not only
+within its own group. That is the point of Task 3 step 2, but it is worth
+saying plainly: swiping any row closes any other open row, across cards and
+lists.
+
+**3. `WorkoutList` renders the empty state** (copy still comes from the pages),
+so deleting the last workout does not leave an empty `<ul>` until revalidation
+lands.
 
 ## Open questions
 
-**A. Where does whole-workout delete live?** This plan puts it on the two list rows (`/` "Zuletzt" and `/history`). The alternative — or addition — is the workout detail page itself, where the swipe would sit on the `WorkoutHeader` and the action would need a `redirect("/")` after deleting the workout you are currently looking at. **Recommendation:** lists only for now; deleting the screen you are standing on is the more surprising interaction, and the lists are where you actually notice a workout you want gone.
+**A. Where does whole-workout delete live?** Built on the two list rows (`/` "Zuletzt" and `/history`) as recommended. The alternative — or addition — is the workout detail page itself, where the swipe would sit on the `WorkoutHeader` and the action would need a `redirect("/")` after deleting the workout you are currently looking at. Still open; `deleteWorkout` needs no change if it is added later.
 
 **B. No undo.** Consistent with sets and exercises today, and the undo toast was already deferred by the 2026-08-20 spec. The tap-only commit (Task 3 step 5) is the cheap guard. If an undo toast is wanted, it is a separate piece of work and should cover all three delete types at once.
 

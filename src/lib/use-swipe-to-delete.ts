@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { clampDragX, resolveSwipeOutcome } from "@/lib/swipe-gesture";
+import { clampDragX, isTap, resolveSwipeOutcome } from "@/lib/swipe-gesture";
 
 export type UseSwipeToDeleteOptions = {
   onDelete: () => void;
@@ -18,11 +18,16 @@ export type UseSwipeToDeleteOptions = {
 export type UseSwipeToDeleteResult = {
   dragX: number;
   isDragging: boolean;
+  /**
+   * Whether the gesture that just ended was a drag rather than a tap.
+   *
+   * Read from the `click` that follows `pointerup`, so a swipe across
+   * clickable row content (a workout row is a `<Link>`) can be swallowed
+   * instead of navigating.
+   */
+  didDrag: () => boolean;
   rowHandlers: {
     onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
-    onPointerMove: (event: ReactPointerEvent<HTMLElement>) => void;
-    onPointerUp: (event: ReactPointerEvent<HTMLElement>) => void;
-    onPointerCancel: (event: ReactPointerEvent<HTMLElement>) => void;
   };
 };
 
@@ -44,9 +49,13 @@ export function useSwipeToDelete({
   // rendering, so resolving the outcome against it would need ~424px of real
   // travel to reach a -200px commit threshold — wider than a phone screen.
   const rawDeltaXRef = useRef(0);
+  // Distance the finger covered during this gesture. Deliberately not reset on
+  // pointerup: the `click` that follows needs to read it.
+  const travelRef = useRef(0);
 
-  // An external open/close — keyboard focus on the delete button, or another
-  // row in the same group opening — moves this row even with no pointer down.
+  // An external open/close — keyboard focus on the delete button, another row
+  // in the same group opening, or a tap outside — moves this row even with no
+  // pointer down.
   useEffect(() => {
     if (pointerIdRef.current !== null) return;
     setDragX(isOpen ? -revealWidth : 0);
@@ -55,34 +64,49 @@ export function useSwipeToDelete({
   const onPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       if (pointerIdRef.current !== null) return;
-      if (INTERACTIVE_TAGS.has((event.target as HTMLElement).tagName)) return;
+      // Typing must win over swiping — but only while the row is closed. Once
+      // it is open the whole row has to be draggable back, which on a set row
+      // is almost entirely inputs and buttons (the scrim above them makes the
+      // target a plain div, so this is belt and braces).
+      if (!isOpen && INTERACTIVE_TAGS.has((event.target as HTMLElement).tagName)) return;
       pointerIdRef.current = event.pointerId;
       startClientXRef.current = event.clientX;
       startDragXRef.current = dragX;
       rawDeltaXRef.current = dragX;
+      travelRef.current = 0;
       setIsDragging(true);
-      event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [dragX]
+    [dragX, isOpen]
   );
 
-  const onPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
-      if (pointerIdRef.current !== event.pointerId) return;
-      const rawDeltaX = startDragXRef.current + (event.clientX - startClientXRef.current);
-      rawDeltaXRef.current = rawDeltaX;
-      setDragX(clampDragX(rawDeltaX, revealWidth));
-    },
-    [revealWidth]
-  );
-
-  const endDrag = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
-      if (pointerIdRef.current !== event.pointerId) return;
+  const finishGesture = useCallback(
+    (pointerId: number, cancelled: boolean) => {
+      if (pointerIdRef.current !== pointerId) return;
       pointerIdRef.current = null;
       setIsDragging(false);
 
-      const outcome = resolveSwipeOutcome(rawDeltaXRef.current, revealWidth, commitThreshold);
+      // A cancelled gesture must never commit a delete: Android Chrome fires
+      // `pointercancel` when it claims the touch for edge-back or
+      // pull-to-refresh, which looks exactly like a left swipe starting near
+      // the screen edge.
+      if (cancelled) {
+        setDragX(isOpen ? -revealWidth : 0);
+        return;
+      }
+
+      // A tap on an open row puts it back — the iOS Mail behaviour, and the
+      // only way to close a set row without hunting for the few pixels that
+      // are not an input. Resolving by position instead would read the row's
+      // resting -88px as "still open" and leave it stuck.
+      if (isTap(travelRef.current) && isOpen) {
+        setDragX(0);
+        onOpenChange(false);
+        return;
+      }
+
+      const outcome = resolveSwipeOutcome(rawDeltaXRef.current, revealWidth, commitThreshold, {
+        startedOpen: startDragXRef.current !== 0,
+      });
       if (outcome === "delete") {
         // Reset the rendered offset as well as the group state: when the row is
         // already closed in the group, `onOpenChange(false)` is a no-op and the
@@ -97,30 +121,50 @@ export function useSwipeToDelete({
       onOpenChange(nextOpen);
       setDragX(nextOpen ? -revealWidth : 0);
     },
-    [revealWidth, commitThreshold, onDelete, onOpenChange]
+    [revealWidth, commitThreshold, onDelete, onOpenChange, isOpen]
   );
 
-  // A cancelled gesture must never commit a delete: Android Chrome fires
-  // `pointercancel` when it claims the touch for edge-back or pull-to-refresh,
-  // which looks exactly like a left swipe starting near the screen edge.
-  const cancelDrag = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
+  /**
+   * The gesture runs on `window`, not on the row, and takes no pointer capture.
+   *
+   * Capture would be the obvious choice, but it retargets the compatibility
+   * mouse events too: the `click` that ends a plain tap would be delivered to
+   * the row wrapper instead of the `<a>` inside it, and a workout row would
+   * stop navigating. Listening on `window` keeps every move — including one
+   * that leaves the row, which a swipe starting near its edge does within a
+   * few pixels — while leaving click dispatch alone.
+   */
+  useEffect(() => {
+    if (!isDragging) return;
+
+    function onMove(event: PointerEvent) {
       if (pointerIdRef.current !== event.pointerId) return;
-      pointerIdRef.current = null;
-      setIsDragging(false);
-      setDragX(isOpen ? -revealWidth : 0);
-    },
-    [isOpen, revealWidth]
-  );
+      travelRef.current = event.clientX - startClientXRef.current;
+      const rawDeltaX = startDragXRef.current + travelRef.current;
+      rawDeltaXRef.current = rawDeltaX;
+      setDragX(clampDragX(rawDeltaX, revealWidth));
+    }
+
+    function onEnd(event: PointerEvent) {
+      finishGesture(event.pointerId, event.type === "pointercancel");
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+  }, [isDragging, revealWidth, finishGesture]);
+
+  const didDrag = useCallback(() => !isTap(travelRef.current), []);
 
   return {
     dragX,
     isDragging,
-    rowHandlers: {
-      onPointerDown,
-      onPointerMove,
-      onPointerUp: endDrag,
-      onPointerCancel: cancelDrag,
-    },
+    didDrag,
+    rowHandlers: { onPointerDown },
   };
 }
