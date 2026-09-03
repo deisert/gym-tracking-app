@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { EndWorkoutButton } from "@/components/workout/end-workout-button";
 import { ExerciseCard } from "@/components/workout/exercise-card";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { WorkoutHeader } from "@/components/workout/workout-header";
@@ -7,6 +8,7 @@ import { getLastPerformances } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
 import { formatPerformedOn } from "@/lib/dates";
 import { formatSetSummary } from "@/lib/sets";
+import { summarizeWorkout } from "@/lib/workout-summary";
 
 export default async function WorkoutPage({
   params,
@@ -26,6 +28,10 @@ export default async function WorkoutPage({
     workout.performed_on,
     workout.id
   );
+
+  // Counted here rather than in the client: every set of this workout is
+  // already loaded above, so the end-of-workout summary costs no extra query.
+  const summary = summarizeWorkout(workout.exercises);
 
   return (
     <main className="mx-auto w-full max-w-md p-4">
@@ -64,8 +70,9 @@ export default async function WorkoutPage({
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-col gap-3">
         <ExercisePicker workoutId={workout.id} />
+        <EndWorkoutButton summary={summary} />
       </div>
     </main>
   );

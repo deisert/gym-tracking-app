@@ -79,6 +79,24 @@ export async function startWorkout(localDate: string): Promise<never> {
   redirect(`/workout/${data.id}`);
 }
 
+/**
+ * Ends the logging session and sends the user back to the overview.
+ *
+ * A workout has no finished state — CONCEPT.md §2.4 keeps it "a dated
+ * container that's always editable", so "beenden" is a navigation step, not a
+ * status change: the same workout stays open for edits from the couch.
+ *
+ * It still goes through a server action rather than a plain link, because the
+ * set mutations only revalidate the workout page. Navigating straight to "/"
+ * would show yesterday's set counts under "Zuletzt" — exactly the numbers the
+ * user just finished logging.
+ */
+export async function endWorkout(): Promise<never> {
+  revalidatePath("/");
+  revalidatePath("/history");
+  redirect("/");
+}
+
 export async function updateWorkoutMeta(
   workoutId: string,
   meta: unknown
