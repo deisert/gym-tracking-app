@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { formatKilos, formatVolume } from "@/lib/workout-summary";
 import type { WorkoutSummaryStats } from "@/lib/workout-summary";
 
 function setsLabel(count: number): string {
@@ -58,17 +59,32 @@ export function EndWorkoutButton({ summary }: { summary: WorkoutSummaryStats }) 
               Noch kein Satz geloggt – du kannst trotzdem beenden und später weitermachen.
             </p>
           ) : (
-            <div className="flex flex-col gap-3">
-              <p className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold tabular-nums">{summary.setCount}</span>
-                <span className="text-sm text-muted-foreground">
-                  {setsLabel(summary.setCount)} in {summary.exerciseCount}{" "}
-                  {summary.exerciseCount === 1 ? "Übung" : "Übungen"}
-                </span>
-              </p>
+            <div className="flex flex-col gap-4">
+              {/* Two hero numbers, side by side: what you did, and what it
+                  weighed. DESIGN_SYSTEM.md §3 — the numerals are the content. */}
+              <dl className="grid grid-cols-2 gap-3">
+                {/* `flex-col-reverse` puts the number on top visually while the
+                    DOM keeps the label first — a <dd> may not precede its <dt>. */}
+                <div className="flex flex-col-reverse">
+                  <dt className="text-sm text-muted-foreground">
+                    {setsLabel(summary.setCount)} in {summary.exerciseCount}{" "}
+                    {summary.exerciseCount === 1 ? "Übung" : "Übungen"}
+                  </dt>
+                  <dd className="text-3xl leading-tight font-bold tabular-nums">
+                    {summary.setCount}
+                  </dd>
+                </div>
+
+                <div className="flex flex-col-reverse">
+                  <dt className="text-sm text-muted-foreground">kg bewegt</dt>
+                  <dd className="text-3xl leading-tight font-bold tabular-nums">
+                    {formatKilos(summary.totalVolumeKg)}
+                  </dd>
+                </div>
+              </dl>
 
               {summary.warmupSetCount > 0 && (
-                <p className="text-sm text-muted-foreground tabular-nums">
+                <p className="-mt-2 text-sm text-muted-foreground tabular-nums">
                   davon {summary.warmupSetCount}{" "}
                   {summary.warmupSetCount === 1 ? "Aufwärmsatz" : "Aufwärmsätze"}
                 </p>
@@ -79,11 +95,20 @@ export function EndWorkoutButton({ summary }: { summary: WorkoutSummaryStats }) 
                   <li key={entry.id} className="flex items-baseline justify-between gap-3">
                     <span>{entry.name}</span>
                     <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
-                      {entry.setCount} {setsLabel(entry.setCount)}
+                      {entry.setCount} {setsLabel(entry.setCount)} · {formatVolume(entry.volumeKg)}
                     </span>
                   </li>
                 ))}
               </ul>
+
+              {/* Otherwise a pull-up-only session just reads "0 kg bewegt" and
+                  looks like a bug. `weight_kg = 0` is the bodyweight
+                  convention (CONCEPT.md §4, open question 4). */}
+              {summary.totalVolumeKg === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Körpergewichtssätze zählen mit 0 kg – dafür fehlt noch dein Körpergewicht.
+                </p>
+              )}
             </div>
           )}
 

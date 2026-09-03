@@ -1,7 +1,7 @@
 # Total moved weight ("Volumen") — where to compute it
 
 **Date:** 2026-09-03
-**Status:** evaluation + recommendation; step 1 implemented, the rest is a decision record for later
+**Status:** implemented for the end-of-workout summary; the rest is a decision record for later
 **Companions:** `CONCEPT.md` §2.9 / §4 (key queries), `FEATURE_BACKLOG.md`, `src/lib/workout-summary.ts`
 
 ---
@@ -25,8 +25,10 @@ Two numbers make this concrete:
 - `getWorkoutDetail` already returns every one of those rows to render the log screen, so
   the summary adds **0 queries and 0 transferred bytes**.
 
-That is what `summarizeWorkout()` in `src/lib/workout-summary.ts` does — it returns
-`totalVolumeKg` today; only the display line is missing.
+That is what `summarizeWorkout()` in `src/lib/workout-summary.ts` does: one pass over the
+sets, `weight_kg × reps` per set, accumulated per exercise and for the workout. The summary
+dialog shows both — the workout total as a hero number, the per-exercise share on each
+line.
 
 Worth naming, because it is the actual answer to "braucht es serverless functions?": on
 Vercel, **a Next.js server component render already *is* a serverless function invocation**.
@@ -121,8 +123,10 @@ These decide what the number *means*; they matter more than where it is computed
    quietly changing this one.
 2. **Bodyweight exercises contribute 0.** `weight_kg = 0` is the bodyweight convention
    (`CONCEPT.md` §4, open question 4), so 12 pull-ups add nothing to the total — a
-   pull-up-heavy day will read low. Fixing it properly needs body weight in the database
-   (`FEATURE_BACKLOG.md`, engineer #2); until then it is a footnote, not a bug.
+   pull-up-heavy day reads low, and a pull-up-only day reads "0 kg". The dialog says so
+   out loud when the total is 0, rather than letting it look like a failed calculation.
+   Fixing it properly needs body weight in the database (`FEATURE_BACKLOG.md`,
+   engineer #2).
 3. **Units.** Weight is stored in kg; `profiles.unit` is a display concern. Convert at the
    formatting boundary (`formatVolume`), never in the stored sum.
 4. **Precision.** `weight_kg` is `numeric(6,2)`; JS sums it as a float, so

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatVolume, summarizeWorkout } from "@/lib/workout-summary";
+import { formatKilos, formatVolume, summarizeWorkout } from "@/lib/workout-summary";
 import type { SetRecord, WorkoutExerciseDetail } from "@/lib/types";
 
 function set(position: number, weight_kg: number, reps: number, is_warmup = false): SetRecord {
@@ -30,16 +30,26 @@ describe("summarizeWorkout", () => {
     expect(summary.exerciseCount).toBe(2);
   });
 
-  it("lists sets per exercise in workout order", () => {
+  it("lists sets and moved weight per exercise in workout order", () => {
     const summary = summarizeWorkout([
       exercise("we1", "Bankdrücken", [set(0, 80, 8)]),
       exercise("we2", "Rudern", [set(0, 70, 10), set(1, 70, 10)]),
     ]);
 
     expect(summary.perExercise).toEqual([
-      { id: "we1", name: "Bankdrücken", setCount: 1 },
-      { id: "we2", name: "Rudern", setCount: 2 },
+      { id: "we1", name: "Bankdrücken", setCount: 1, volumeKg: 640 },
+      { id: "we2", name: "Rudern", setCount: 2, volumeKg: 1400 },
     ]);
+  });
+
+  it("keeps the per-exercise volumes adding up to the total", () => {
+    const summary = summarizeWorkout([
+      exercise("we1", "Bankdrücken", [set(0, 82.5, 6)]),
+      exercise("we2", "Rudern", [set(0, 22.5, 7), set(1, 22.5, 7)]),
+    ]);
+
+    const sum = summary.perExercise.reduce((total, entry) => total + entry.volumeKg, 0);
+    expect(sum).toBe(summary.totalVolumeKg);
   });
 
   it("ignores exercises without a single logged set", () => {
@@ -52,7 +62,7 @@ describe("summarizeWorkout", () => {
     expect(summary.perExercise).toHaveLength(1);
   });
 
-  it("sums weight × reps over all sets, warm-ups included", () => {
+  it("sums each set's weight × reps over all sets, warm-ups included", () => {
     const summary = summarizeWorkout([
       exercise("we1", "Bankdrücken", [set(0, 60, 10, true), set(1, 80, 8), set(2, 82.5, 6)]),
     ]);
@@ -74,6 +84,7 @@ describe("summarizeWorkout", () => {
 
     expect(summary.setCount).toBe(1);
     expect(summary.totalVolumeKg).toBe(0);
+    expect(summary.perExercise[0].volumeKg).toBe(0);
   });
 
   it("returns an empty summary for a workout with nothing logged", () => {
@@ -85,6 +96,13 @@ describe("summarizeWorkout", () => {
       totalVolumeKg: 0,
       perExercise: [],
     });
+  });
+});
+
+describe("formatKilos", () => {
+  it("groups thousands the German way without a unit", () => {
+    expect(formatKilos(4320)).toBe("4.320");
+    expect(formatKilos(620)).toBe("620");
   });
 });
 
