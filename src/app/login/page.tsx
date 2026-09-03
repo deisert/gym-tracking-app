@@ -1,4 +1,9 @@
-import { loginWithMagicLink, loginWithPassword, signUpWithMagicLink } from "./actions";
+import {
+  loginWithMagicLink,
+  loginWithPassword,
+  signUpWithMagicLink,
+  signUpWithPassword,
+} from "./actions";
 import { AuthCard } from "@/components/auth/auth-card";
 
 export default async function LoginPage({
@@ -13,7 +18,8 @@ export default async function LoginPage({
       <AuthCard
         error={error}
         sent={sent === "1"}
-        signUpAction={signUpWithMagicLink}
+        signUpAction={signUpWithPassword}
+        signUpMagicAction={signUpWithMagicLink}
         magicLoginAction={loginWithMagicLink}
         passwordLoginAction={loginWithPassword}
       />

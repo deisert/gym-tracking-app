@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authEmailSchema,
   authNameSchema,
+  authPasswordSchema,
   exerciseNameSchema,
   setInputSchema,
   workoutMetaSchema,
@@ -84,6 +85,24 @@ describe("authNameSchema", () => {
 
   it("rejects names longer than 80 characters", () => {
     expect(authNameSchema.safeParse("x".repeat(81)).success).toBe(false);
+  });
+});
+
+describe("authPasswordSchema", () => {
+  it("accepts a password at the minimum length", () => {
+    expect(authPasswordSchema.safeParse("123456").success).toBe(true);
+  });
+
+  it("rejects a password shorter than the Supabase minimum", () => {
+    expect(authPasswordSchema.safeParse("12345").success).toBe(false);
+  });
+
+  it("rejects a password longer than 72 characters", () => {
+    expect(authPasswordSchema.safeParse("x".repeat(73)).success).toBe(false);
+  });
+
+  it("rejects an empty string", () => {
+    expect(authPasswordSchema.safeParse("").success).toBe(false);
   });
 });
 

@@ -27,9 +27,12 @@ export type SetInput = z.infer<typeof setInputSchema>;
 
 export const exerciseNameSchema = z.string().trim().min(1).max(80);
 
-// Auth: email + display name only (CONCEPT.md open question #1 — magic-link signup).
+// Auth: email/password is the default signup path; magic link stays available
+// as a secondary, passwordless option (CONCEPT.md open question #1).
 export const authEmailSchema = z.string().trim().toLowerCase().email().max(255);
 export const authNameSchema = z.string().trim().min(1).max(80);
+// 6 matches the Supabase project's `minimum_password_length` (supabase/config.toml).
+export const authPasswordSchema = z.string().min(6).max(72);
 
 export const workoutMetaSchema = z.object({
   performed_on: z.string().refine(isRealIsoDate),
