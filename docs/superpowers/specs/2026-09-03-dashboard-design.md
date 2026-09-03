@@ -3,7 +3,7 @@
 **Date:** 2026-09-03
 **Status:** decided 2026-09-03 (see §9); implementation plan in
 `docs/superpowers/plans/2026-09-03-dashboard-phase-1.md`
-**Companions:** `CONCEPT.md` §2.9 / §6.5, `DESIGN_SYSTEM.md` §4 (3-tab navigation), `FEATURE_BACKLOG.md`,
+**Companions:** `CONCEPT.md` §2.9 / §6.5, `DESIGN_SYSTEM.md` §4 (navigation), `FEATURE_BACKLOG.md`,
 `docs/superpowers/specs/2026-09-03-total-volume-evaluation.md` (where the aggregation belongs)
 
 ---
@@ -177,8 +177,9 @@ user present. A stored `total_volume_kg` column stays out until a query is measu
   is the motivation." Records are results, not trophies.
 - **Metrics the schema cannot support** (calories, heart rate, sleep). Not in the data
   model, and inventing them would make every other number look invented too.
-- **A second copy of "Workouts diese Woche".** It is already on Today. The dashboard shows
-  it *in context* (delta, average, streak); Today keeps the bare glance number.
+- **A second copy of "Workouts diese Woche".** It is already on Verlauf, above the workout
+  list. The dashboard shows it *in context* (delta, average, streak); Verlauf keeps the bare
+  glance number.
 
 ## 9. Decisions — Dominik, 2026-09-03
 
@@ -190,7 +191,9 @@ user present. A stored `total_volume_kg` column stays out until a query is measu
    nothing, and this matches the observed ~2,4 per week.
 4. **Aggregation:** Postgres views built with the dashboard, not retrofitted later.
 5. **Week starts Monday**, per the existing `startOfWeekMonday`.
-6. **Today keeps its week counter.** Same number, different job: Today is the glance, the
-   dashboard is the context.
+6. **Verlauf keeps its week counter.** Same number, different job: Verlauf is the glance,
+   the dashboard is the context. (Decided while Today and Verlauf were still two screens;
+   PR #11 merged them, which changes nothing about the decision — only where the counter
+   lives.)
 7. **Records window:** last 30 days. "Since you last looked" is the better moment but needs
    a stored timestamp that does not exist yet.

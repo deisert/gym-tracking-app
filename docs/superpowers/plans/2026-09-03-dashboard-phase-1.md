@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A third tab, `/dashboard`, showing six blocks of trackable progress — this week, streak, a 12-week calendar, new records, your exercises, and all-time totals — with no chart library.
+**Goal:** Fill the `/dashboard` tab, a placeholder empty state since PR #11, with six blocks of trackable progress: this week, streak, a 12-week calendar, new records, your exercises, and all-time totals — with no chart library.
 
 **Architecture:** Postgres does the aggregation (four objects, all `security_invoker = on`), a server-only data layer reads them in 3–4 queries, pure functions in `src/lib/` do the bucketing and record maths, and the route is a server component rendering plain markup. No client component is needed for any block: nothing on this screen is interactive in v1.
 
@@ -172,16 +172,15 @@ Follow the existing data-layer conventions exactly: `import "server-only"`, `cre
 
 ---
 
-### Task 6: Route, tab, and the six blocks
+### Task 6: The six blocks
 
 **Files:**
-- Create: `src/app/dashboard/page.tsx`
+- Modify: `src/app/dashboard/page.tsx` (exists as a placeholder; becomes a server component)
 - Create: `src/components/dashboard/` — `stat-tiles.tsx`, `streak-line.tsx`, `week-heatmap.tsx`, `records-list.tsx`, `exercise-list.tsx`, `totals-row.tsx`
-- Modify: `src/components/nav/bottom-tabs.tsx`
 
 **Interfaces:** Consumes Task 5's `getDashboardData`; all components are server components taking plain props.
 
-- [ ] **Step 1: Third tab.** Add `{ href: "/dashboard", label: "Dashboard", Icon: … }` to `TABS` (lucide, matching the existing two). `DESIGN_SYSTEM.md` §4 has specified three tabs from the start. Check the bar still fits at 320px width.
+- [ ] **Step 1: Nothing to do in the navigation.** PR #11 already added the Dashboard tab and merged Today into Verlauf, so the bar is `Verlauf · Dashboard` and `src/app/dashboard/page.tsx` exists. Do not add a tab; replace the placeholder page, and keep its empty-state copy for Task 7 Step 2 — it is already the wording `DESIGN_SYSTEM.md` §5 asks for.
 
 - [ ] **Step 2: Build the blocks in the spec's order** — §2.1 through §2.6. Reuse the visual vocabulary that already exists: card surfaces, `tabular-nums` on every figure, section labels in the `text-xs uppercase tracking-wide text-muted-foreground` pattern from the home page.
 
