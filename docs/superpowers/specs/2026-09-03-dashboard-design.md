@@ -1,7 +1,8 @@
 # Dashboard tab — what it shows, in what order, and when
 
 **Date:** 2026-09-03
-**Status:** concept for discussion; nothing implemented yet
+**Status:** decided 2026-09-03 (see §9); implementation plan in
+`docs/superpowers/plans/2026-09-03-dashboard-phase-1.md`
 **Companions:** `CONCEPT.md` §2.9 / §6.5, `DESIGN_SYSTEM.md` §4 (3-tab navigation), `FEATURE_BACKLOG.md`,
 `docs/superpowers/specs/2026-09-03-total-volume-evaluation.md` (where the aggregation belongs)
 
@@ -179,13 +180,17 @@ user present. A stored `total_volume_kg` column stays out until a query is measu
 - **A second copy of "Workouts diese Woche".** It is already on Today. The dashboard shows
   it *in context* (delta, average, streak); Today keeps the bare glance number.
 
-## 9. Open questions
+## 9. Decisions — Dominik, 2026-09-03
 
-1. Does the third tab replace Today's week counter, or do both stay? (Recommendation: both —
-   different jobs, same number.)
-2. Week boundary: Monday, per `startOfWeekMonday`. Confirm — it silently defines every
-   weekly number on the screen.
-3. Streak threshold: is a week "in Serie" at ≥ 1 or ≥ 2 workouts? Decides how often the
-   number resets, i.e. whether it encourages or nags.
-4. Records window: last 30 days, or "since you last opened the dashboard"? The second is
-   more of a moment, but needs a stored timestamp.
+1. **Scope:** all six blocks of §2 ship together. None needs a chart library, and fewer
+   blocks leave the screen thin in exactly the early weeks it has to carry.
+2. **Records shown:** Gewichts-PR, e1RM-PR, Wiederholungs-PR. Session-Volumen-PR is
+   deferred — it overlaps the other three and crowds the list.
+3. **Streak threshold:** a week counts at **≥ 2 workouts**. A streak that cannot break says
+   nothing, and this matches the observed ~2,4 per week.
+4. **Aggregation:** Postgres views built with the dashboard, not retrofitted later.
+5. **Week starts Monday**, per the existing `startOfWeekMonday`.
+6. **Today keeps its week counter.** Same number, different job: Today is the glance, the
+   dashboard is the context.
+7. **Records window:** last 30 days. "Since you last looked" is the better moment but needs
+   a stored timestamp that does not exist yet.
