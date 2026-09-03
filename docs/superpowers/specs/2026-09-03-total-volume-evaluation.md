@@ -112,15 +112,16 @@ Precompute on write so reads are free.
 | Weekly recap, notifications | `pg_cron` or Vercel Cron | Must run without a user present |
 | Stored `total_volume_kg` column | Not planned | Only after a measured slow query |
 
-## 5. Definitions to settle before the number goes on screen
+## 5. What the number means
 
 These decide what the number *means*; they matter more than where it is computed.
 
-1. **Warm-ups counted?** `summarizeWorkout` currently counts them: "bewegtes Gewicht" is
-   read literally as total load moved. Note the inconsistency this creates with
-   `formatSetSummary`, which is working-sets-only because warm-ups are not a comparison.
-   If the summary is ever compared session-to-session, split the two numbers rather than
-   quietly changing this one.
+1. **Warm-ups count. Decided — confirmed by Dominik, 2026-09-03.** "Bewegtes Gewicht" is
+   read literally: every kilo that went up counts, warm-ups included. This differs from
+   `formatSetSummary`, which is working-sets-only, and that difference is intended — the
+   summary line is a session-to-session *comparison*, the volume number is a *total*. If
+   a comparable working-set volume is ever needed (dashboard trends), add it as a second
+   number; do not redefine this one.
 2. **Bodyweight exercises contribute 0.** `weight_kg = 0` is the bodyweight convention
    (`CONCEPT.md` §4, open question 4), so 12 pull-ups add nothing to the total — a
    pull-up-heavy day reads low, and a pull-up-only day reads "0 kg". The dialog says so
