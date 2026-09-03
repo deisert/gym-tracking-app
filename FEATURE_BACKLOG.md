@@ -33,6 +33,7 @@ Companion to `CONCEPT.md`. These are post-v1 ideas — nothing here blocks the v
 | 3 | **CSV/JSON export** | Full data export anytime. Cheap trust feature, doubles as backup. | M | L |
 | 4 | **Supersets as first-class grouping** | Group `workout_exercises` via a nullable `superset_group` column; UI renders grouped exercises interleaved. | L | M |
 | 5 | **AI note summarizer** | Periodically distill per-instance exercise notes ("seat 4, wrists hurt at wide grip") into the exercise's permanent setup note. | L | M |
+| 6 | **Pagination on Verlauf** | The merged Verlauf screen loads the 100 most recent workouts unpaginated; past that count, older workouts silently drop off the list (still in the DB, just not browsable there). At ~3-4 sessions/week that's ~6-9 months of training. Fix: cursor-based "Mehr laden" on `(performed_on, created_at)` — matches the existing index and sort, no new state model needed. | L | L |
 
 ## Top 5 ranked
 
