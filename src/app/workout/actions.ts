@@ -88,12 +88,11 @@ export async function startWorkout(localDate: string): Promise<never> {
  *
  * It still goes through a server action rather than a plain link, because the
  * set mutations only revalidate the workout page. Navigating straight to "/"
- * would show yesterday's set counts under "Zuletzt" — exactly the numbers the
- * user just finished logging.
+ * would show yesterday's set counts in the workout list — exactly the numbers
+ * the user just finished logging.
  */
 export async function endWorkout(): Promise<never> {
   revalidatePath("/");
-  revalidatePath("/history");
   redirect("/");
 }
 
@@ -336,9 +335,8 @@ export async function deleteWorkout(workoutId: string): Promise<ActionResult<nul
     return { ok: false, error: "Workout konnte nicht gelöscht werden.", kind: "transient" };
   }
 
-  // Both lists render workouts, and the dashboard also counts this week's.
+  // The one list renders every workout, including this week's count above it.
   revalidatePath("/");
-  revalidatePath("/history");
   return { ok: true, data: null };
 }
 
