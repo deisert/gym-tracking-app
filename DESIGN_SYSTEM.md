@@ -62,7 +62,7 @@ Scale (Tailwind): `text-xs 13 · text-sm 14 · base 16 · lg 18 · xl 20 · 2xl 
 
 - **Grid:** 4px base. Screen padding `px-4` (16px), section gaps `gap-6` (24px), inside cards `p-4`.
 - **Layout:** single column, max-width `28rem` centered on desktop (it's a phone app that happens to run on desktop).
-- **Navigation:** bottom tab bar, 3 tabs — **Today · History · Dashboard** — plus a floating "Start workout" action on Today. Library and settings live behind the profile icon in the header.
+- **Navigation:** bottom tab bar, 2 tabs — **Verlauf · Dashboard**. Verlauf merges the former Today/History split: "Start workout" pinned at the top (this week's count directly under it), followed by the reverse-chronological workout list — one screen, no separate landing page. Library and settings live behind the profile icon in the header.
 - **Radius:** `--radius: 12px` for cards and inputs; pills (chips, category) fully rounded; buttons 12px.
 - **Elevation:** flat. Hierarchy comes from surface color steps (background → card → muted), not shadows. Single exception: bottom sheets get a subtle top shadow.
 - **Tap targets:** minimum 44×44px, 48px for set-row controls.

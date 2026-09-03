@@ -148,13 +148,12 @@ Data mutations via **server actions**, one per operation (addSet, updateSet, …
 
 ## 6. Screens (mobile-first)
 
-1. **Today / Home** — "Start workout" button, this week's workouts, streak.
+1. **Verlauf** (merges the former Today/Home and History screens) — "Start workout" button and this week's workouts/streak pinned at the top, followed by the reverse-chronological list of all workouts → tap into read/edit view (same component as the log screen). One screen, no separate landing page.
 2. **Workout log** (the core screen) — workout header (date, category, note — collapsed by default); ordered exercise list; per exercise: sets as rows (weight, reps, warm-up toggle) with ghost values from last session and last-session summary line ("12 Aug: 80×8, 80×8, 82.5×6"); add-set duplicates the previous row; effort slider + note at the exercise bottom; "Add exercise" opens the picker.
 3. **Exercise picker** — search field with autocomplete, recently-used first, inline create, archived hidden.
 4. **Exercise library** — list, edit name/note/attribute options, archive.
 5. **Dashboard** — consistency (heatmap, workouts/week, category split) + per-exercise progress (chart with metric toggle: top set / est. 1RM / volume; optional variation filter).
-6. **History** — reverse-chronological workout list → tap into read/edit view (same component as the log screen).
-7. **Auth** — login/signup, minimal.
+6. **Auth** — login/signup, minimal.
 
 UI conventions: numeric keypad inputs (`inputmode="decimal"`), large tap targets, weight steps ±2.5 kg on steppers, everything editable after the fact.
 

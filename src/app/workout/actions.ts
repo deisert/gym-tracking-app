@@ -88,12 +88,11 @@ export async function startWorkout(localDate: string): Promise<never> {
  *
  * It still goes through a server action rather than a plain link, because the
  * set mutations only revalidate the workout page. Navigating straight to "/"
- * would show yesterday's set counts under "Zuletzt" — exactly the numbers the
- * user just finished logging.
+ * would show yesterday's set counts in the workout list — exactly the numbers
+ * the user just finished logging.
  */
 export async function endWorkout(): Promise<never> {
   revalidatePath("/");
-  revalidatePath("/history");
   redirect("/");
 }
 
@@ -311,6 +310,33 @@ export async function deleteSet(
   }
 
   revalidatePath(`/workout/${workoutId}`);
+  return { ok: true, data: null };
+}
+
+/**
+ * Deletes a whole workout, and with it every exercise and set of that day.
+ *
+ * No cascade is done by hand: `workout_exercises.workout_id` and
+ * `sets.workout_exercise_id` are both `on delete cascade` (see the init
+ * migration). The `exercises` FK is `on delete restrict`, but that guards
+ * deleting an exercise from the library, not a workout that references one.
+ */
+export async function deleteWorkout(workoutId: string): Promise<ActionResult<null>> {
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("workouts")
+    .delete()
+    .eq("id", workoutId)
+    .select("id");
+
+  // RLS turns a foreign or missing id into zero deleted rows rather than an
+  // error, so an empty result is a failure just as much as `error` is.
+  if (error || !data || data.length === 0) {
+    return { ok: false, error: "Workout konnte nicht gelöscht werden.", kind: "transient" };
+  }
+
+  // The one list renders every workout, including this week's count above it.
+  revalidatePath("/");
   return { ok: true, data: null };
 }
 

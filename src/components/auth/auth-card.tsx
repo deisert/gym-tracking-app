@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 type Mode = "signup" | "login";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  signup: "Konto konnte nicht erstellt werden – prüfe die E-Mail-Adresse.",
+  signup: "Konto konnte nicht erstellt werden – prüfe die Angaben.",
+  "signup-magic": "Link konnte nicht gesendet werden – prüfe die E-Mail-Adresse.",
   magic: "Link konnte nicht gesendet werden – prüfe die E-Mail-Adresse.",
   password: "Anmeldung fehlgeschlagen – prüfe E-Mail und Passwort.",
   link: "Der Link ist ungültig oder abgelaufen. Fordere einen neuen an.",
@@ -21,6 +22,7 @@ type Props = {
   error?: string;
   sent: boolean;
   signUpAction: (formData: FormData) => void;
+  signUpMagicAction: (formData: FormData) => void;
   magicLoginAction: (formData: FormData) => void;
   passwordLoginAction: (formData: FormData) => void;
 };
@@ -29,13 +31,20 @@ export function AuthCard({
   error,
   sent,
   signUpAction,
+  signUpMagicAction,
   magicLoginAction,
   passwordLoginAction,
 }: Props) {
   // error=link (a dead magic link) is a login-side problem regardless of
   // which form the user last submitted, so land them on "Anmelden".
-  const [mode, setMode] = useState<Mode>(error === "password" || error === "link" ? "login" : "signup");
-  const [usePassword, setUsePassword] = useState(error === "password");
+  const [mode, setMode] = useState<Mode>(
+    error === "password" || error === "magic" || error === "link" ? "login" : "signup"
+  );
+  // Password is the default for both forms; magic link is the secondary,
+  // passwordless fallback. Only land on the magic sub-form when an error
+  // came from that path itself.
+  const [signupUsePassword, setSignupUsePassword] = useState(error !== "signup-magic");
+  const [loginUsePassword, setLoginUsePassword] = useState(error !== "magic" && error !== "link");
 
   if (sent) {
     return (
@@ -78,7 +87,7 @@ export function AuthCard({
           </button>
         </div>
 
-        {mode === "signup" && (
+        {mode === "signup" && signupUsePassword && (
           <form action={signUpAction} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="name">Name</Label>
@@ -102,14 +111,73 @@ export function AuthCard({
                 required
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="signup-password">Passwort</Label>
+              <Input
+                id="signup-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                minLength={6}
+                className="min-h-11"
+                required
+              />
+            </div>
             {error === "signup" && <p className="text-sm text-destructive">{ERROR_MESSAGES.signup}</p>}
             <Button type="submit" className="min-h-11 w-full">
-              Link senden
+              Konto erstellen
             </Button>
+            <button
+              type="button"
+              className="min-h-11 text-sm text-muted-foreground underline underline-offset-4"
+              onClick={() => setSignupUsePassword(false)}
+            >
+              Stattdessen Link per E-Mail senden
+            </button>
           </form>
         )}
 
-        {mode === "login" && usePassword && (
+        {mode === "signup" && !signupUsePassword && (
+          <form action={signUpMagicAction} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                className="min-h-11"
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="signup-magic-email">E-Mail</Label>
+              <Input
+                id="signup-magic-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                className="min-h-11"
+                required
+              />
+            </div>
+            {error === "signup-magic" && (
+              <p className="text-sm text-destructive">{ERROR_MESSAGES["signup-magic"]}</p>
+            )}
+            <Button type="submit" className="min-h-11 w-full">
+              Link senden
+            </Button>
+            <button
+              type="button"
+              className="min-h-11 text-sm text-muted-foreground underline underline-offset-4"
+              onClick={() => setSignupUsePassword(true)}
+            >
+              Stattdessen Passwort vergeben
+            </button>
+          </form>
+        )}
+
+        {mode === "login" && loginUsePassword && (
           <form action={passwordLoginAction} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="password-email">E-Mail</Label>
@@ -140,14 +208,14 @@ export function AuthCard({
             <button
               type="button"
               className="min-h-11 text-sm text-muted-foreground underline underline-offset-4"
-              onClick={() => setUsePassword(false)}
+              onClick={() => setLoginUsePassword(false)}
             >
               Stattdessen Link per E-Mail senden
             </button>
           </form>
         )}
 
-        {mode === "login" && !usePassword && (
+        {mode === "login" && !loginUsePassword && (
           <form action={magicLoginAction} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="magic-email">E-Mail</Label>
@@ -169,7 +237,7 @@ export function AuthCard({
             <button
               type="button"
               className="min-h-11 text-sm text-muted-foreground underline underline-offset-4"
-              onClick={() => setUsePassword(true)}
+              onClick={() => setLoginUsePassword(true)}
             >
               Stattdessen Passwort verwenden
             </button>
