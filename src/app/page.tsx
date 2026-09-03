@@ -1,11 +1,10 @@
-import Link from "next/link";
-
 import { logout } from "@/app/login/actions";
 import { StartWorkoutButton } from "@/components/workout/start-workout-button";
+import { WorkoutList } from "@/components/workout/workout-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { countWorkoutsSince, listRecentWorkouts } from "@/lib/data/workouts";
-import { formatPerformedOn, startOfWeekMonday, todayInAppTimezone } from "@/lib/dates";
+import { startOfWeekMonday, todayInAppTimezone } from "@/lib/dates";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 export default async function HomePage({
@@ -68,30 +67,11 @@ export default async function HomePage({
           Zuletzt
         </h2>
 
-        {recent.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Noch kein Workout geloggt. Starte dein erstes.
-          </p>
-        ) : (
-          <ul className="mt-3 flex flex-col gap-2">
-            {recent.map((workout) => (
-              <li key={workout.id}>
-                <Link
-                  href={`/workout/${workout.id}`}
-                  className="flex min-h-14 items-center justify-between rounded-xl bg-card px-4"
-                >
-                  <span className="font-medium">
-                    {formatPerformedOn(workout.performed_on)}
-                    {workout.category ? ` · ${workout.category}` : ""}
-                  </span>
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {workout.exerciseCount} Übungen · {workout.setCount} Sätze
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+        <WorkoutList
+          workouts={recent}
+          emptyText="Noch kein Workout geloggt. Starte dein erstes."
+          className="mt-3"
+        />
       </section>
     </main>
   );
