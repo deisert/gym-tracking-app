@@ -4,7 +4,7 @@ import { EndWorkoutButton } from "@/components/workout/end-workout-button";
 import { ExerciseCard } from "@/components/workout/exercise-card";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { WorkoutHeader } from "@/components/workout/workout-header";
-import { getLastPerformances } from "@/lib/data/exercises";
+import { getLastPerformances, listExercises } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
 import { formatPerformedOn } from "@/lib/dates";
 import { formatSetSummary } from "@/lib/sets";
@@ -23,11 +23,17 @@ export default async function WorkoutPage({
   if (!workout) notFound();
 
   // One batched query for every exercise in the workout — never one per card.
-  const lastPerformances = await getLastPerformances(
-    workout.exercises.map((workoutExercise) => workoutExercise.exercise.id),
-    workout.performed_on,
-    workout.id
-  );
+  // `listExercises` needs nothing from the workout, so it rides along in parallel:
+  // handing the picker its library here is what makes typing in it cost no
+  // request at all.
+  const [lastPerformances, exercises] = await Promise.all([
+    getLastPerformances(
+      workout.exercises.map((workoutExercise) => workoutExercise.exercise.id),
+      workout.performed_on,
+      workout.id
+    ),
+    listExercises(),
+  ]);
 
   // Counted here rather than in the client: every set of this workout is
   // already loaded above, so the end-of-workout summary costs no extra query.
@@ -71,7 +77,7 @@ export default async function WorkoutPage({
       )}
 
       <div className="mt-6 flex flex-col gap-3">
-        <ExercisePicker workoutId={workout.id} />
+        <ExercisePicker workoutId={workout.id} exercises={exercises} />
         <EndWorkoutButton summary={summary} />
       </div>
     </main>

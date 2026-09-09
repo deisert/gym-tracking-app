@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { searchExercises } from "@/lib/data/exercises";
 import { todayInAppTimezone } from "@/lib/dates";
 import { nextPosition } from "@/lib/sets";
 import { createServerSupabase } from "@/lib/supabase/server";
@@ -338,16 +337,4 @@ export async function deleteWorkout(workoutId: string): Promise<ActionResult<nul
   // The one list renders every workout, including this week's count above it.
   revalidatePath("/");
   return { ok: true, data: null };
-}
-
-/**
- * Search wrapper for the picker.
- *
- * `searchExercises` reaches the server-only Supabase client, so a client
- * component cannot import it. It lives here rather than beside the route
- * because a module inside `src/app/workout/[id]/` would have to be imported
- * through a path containing literal square brackets.
- */
-export async function searchExercisesAction(query: string): Promise<ExerciseOption[]> {
-  return searchExercises(query);
 }

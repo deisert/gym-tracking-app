@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import {
   addExerciseToWorkout,
   findOrCreateExercise,
-  searchExercisesAction,
 } from "@/app/workout/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,39 +14,28 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { ExerciseOption } from "@/lib/types";
+import { filterExercises } from "@/lib/exercise-search";
+import type { ExercisePickerOption } from "@/lib/exercise-search";
 
-export function ExercisePicker({ workoutId }: { workoutId: string }) {
+export function ExercisePicker({
+  workoutId,
+  exercises,
+}: {
+  workoutId: string;
+  exercises: ExercisePickerOption[];
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<ExerciseOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let cancelled = false;
-    // Debounced so typing does not queue one action per keystroke — this
-    // Next.js version dispatches server actions sequentially per client.
-    const timer = setTimeout(() => {
-      searchExercisesAction(query)
-        .then((result) => {
-          if (!cancelled) setOptions(result);
-        })
-        .catch((cause) => {
-          // Without this the rejection is unhandled and the list silently keeps
-          // showing results for an older query.
-          console.error("ExercisePicker: search failed", { query }, cause);
-          if (!cancelled) setError("Übungen konnten nicht geladen werden.");
-        });
-    }, 150);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query, isOpen]);
+  // Filtering happens here rather than on the server on purpose. The library
+  // arrives as a prop from the workout page, already sorted recently-used-first,
+  // so narrowing it is a string match over a few dozen rows — no request, no
+  // debounce, no stale-result race. It used to be a debounced server action per
+  // keystroke, which this Next.js version dispatches sequentially per client:
+  // on gym cellular the queue was the whole of the latency.
+  const options = useMemo(() => filterExercises(exercises, query), [exercises, query]);
 
   const trimmedQuery = query.trim();
   const hasExactMatch = options.some(
@@ -57,13 +45,13 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
   function handleOpenChange(open: boolean) {
     setIsOpen(open);
     // Dismissing via Escape or the backdrop bypasses addExisting/createAndAdd,
-    // so this is the only place a close-without-success can clear a stale
-    // error before the sheet is reopened for an unrelated exercise. The
-    // options go too: the debounced search only runs while the sheet is open,
-    // so a reopen would otherwise flash the previous filter's results first.
+    // so this is the only place a close-without-success can clear a stale error
+    // before the sheet is reopened for an unrelated exercise. The query goes
+    // too, so a reopen starts on the full recently-used list rather than the
+    // previous filter.
     if (!open) {
       setError(null);
-      setOptions([]);
+      setQuery("");
     }
   }
 
@@ -167,7 +155,7 @@ export function ExercisePicker({ workoutId }: { workoutId: string }) {
             </li>
           )}
 
-          {options.length === 0 && trimmedQuery.length === 0 && (
+          {exercises.length === 0 && (
             <li className="py-3 text-sm text-muted-foreground">
               Noch keine Übungen. Tippe einen Namen, um die erste anzulegen.
             </li>
