@@ -6,6 +6,8 @@
 
 **Architecture:** The Next.js app moves wholesale into `apps/web`. The four pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`) plus their 36 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
 
+**Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 2 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
+
 **Tech Stack:** Next.js 16.3.1 (App Router, Server Actions), React 19.2.8, Tailwind CSS v4, Supabase (`@supabase/ssr`), zod 4, vitest 1, npm workspaces, `sharp` (icon generation, dev-only).
 
 **Spec:** `docs/superpowers/specs/2026-09-15-mobile-strategy.md`
@@ -310,6 +312,23 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 ---
 
 ## Task 2: Extract `packages/core` and rewire the web app's imports
+
+> **Why this is still worth doing with the native fork open.** The original
+> justification was "so the mobile app can import it" — true for React Native,
+> **void for Swift**, which cannot import a TypeScript package. The decision
+> survives on two grounds that do not depend on the fork:
+>
+> 1. **Asymmetric cost.** Doing this now and later choosing Swift wastes about an
+>    hour of directory structure. *Not* doing it and later choosing React Native
+>    means migrating a shared package out from under a running second app.
+> 2. **It is right for the web app alone.** The 36 tests run in milliseconds
+>    without booting Next, and the business rules live in one auditable place.
+>
+> On the Swift branch `packages/core` becomes an *executable specification*
+> rather than a dependency: the Epley formula, ghost-value index mapping, German
+> decimal formatting, Europe/Berlin date handling and validation bounds stated
+> once, with 36 tests that become the conformance checklist for a Swift port.
+> That is real, and weaker than direct reuse. Execute this task either way.
 
 **Files:**
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/vitest.config.ts`, `packages/core/src/index.ts`
@@ -1413,30 +1432,142 @@ Note what the PWA cannot do that you actually miss. That list, not a general pre
 
 ---
 
-# Phase 3 — React Native (gated, not yet planned in detail)
+# Phase 3 — Native Client (gated; fork unresolved, not planned in detail)
 
-**Do not start this phase from this document.** It is deliberately not broken into executable tasks, because writing forty steps of Expo detail for work that may never happen is waste — and because Expo's SDK moves faster than any plan written in advance stays accurate. Every command in a future Phase 3 plan must be re-validated against the current Expo documentation at the time it is written.
+**Do not start this phase from this document,** and do not start it on either
+branch without first completing Task 11. It is deliberately not broken into
+executable tasks: writing forty steps of Expo or Xcode detail for work that may
+never happen is waste, and both toolchains move faster than a plan written in
+advance stays accurate. Every command in a future Phase 3 plan must be
+re-validated against current documentation when that plan is written.
 
-**Entry gate (from the spec):** Phase 3 opens only when the PWA has been used for real workouts and a specific, named deficiency exists. "It feels less native" is not sufficient.
+**Entry gate (spec D1, D9):** Phase 3 opens only when the PWA has been used for
+real workouts and a specific, named deficiency exists. "It feels less native" is
+not sufficient — and is also not enough information to resolve the fork.
 
-**What is already paid for.** Phases 1–2 do the expensive part. `packages/core` holds the types, validation, ghost-value logic, and date handling with no React, Next, or Supabase imports — an Expo app consumes it as a workspace dependency with no changes, and Metro resolves workspace symlinks the same way Next does. The database, RLS policies, and auth setup need nothing.
+## Task 11: Resolve the React Native vs. Swift fork (decision, not code)
 
-**What Phase 3 would still owe:**
+This is a real task with a real deliverable: an appended decision record in
+`docs/superpowers/specs/2026-09-15-mobile-strategy.md` promoting D9 from
+"deferred" to a choice with a stated reason. Everything downstream depends on
+it, and doing it implicitly — by opening Xcode one afternoon — is how a
+codebase acquires a direction nobody argued for.
 
-1. `apps/mobile` scaffolded with Expo, using a **development build** (`expo-dev-client`), not Expo Go — Expo Go cannot load the native modules this needs.
-2. Supabase auth on-device: `@supabase/supabase-js` with `expo-secure-store` as the session store, plus a deep-link scheme (`gymtrack://auth-callback`) added to Supabase Auth's redirect allow list. Note that `@supabase/ssr`, which the web app uses, is server-side only and does not apply here.
-3. Re-implementation of every screen. React Native shares logic with the web app, **not** components — `src/components/` is JSX over DOM elements and Tailwind classes, none of which exist in React Native. Parity means rebuilding login, home, workout logging, and history against `packages/core`.
-4. Rewriting the data layer. `src/lib/data/*` and `src/app/**/actions.ts` are `server-only` and Server Actions respectively; per spec D5 the mobile app calls Supabase directly instead. RLS remains the authorization boundary.
-5. Distribution, and the ~$99/yr decision deferred by spec D6.
+- [ ] **Step 1: Write down the named deficiency**
 
-Item 3 is the one to weigh honestly: it is a second UI to build and then to keep in sync forever. Have the named deficiency from Task 10 Step 6 in hand before agreeing to it.
+From Task 10 Step 6. One or two sentences describing what the PWA could not do
+that you actually missed during real workouts. If this is empty, the gate has
+not opened; stop here and keep using the PWA.
+
+- [ ] **Step 2: Answer the one question that can end the argument**
+
+Will an Android phone ever need this app? If yes, choose React Native and skip
+to Step 5 — it wins outright and no other criterion outranks this.
+
+- [ ] **Step 3: Classify the deficiency**
+
+- Names **Live Activities / Dynamic Island** (a rest timer on the 15 Pro's
+  always-on display), **Apple Health**, **widgets**, or **real haptics** →
+  argues for Swift. React Native reaches these only through native modules,
+  which is where its abstraction stops paying and starts costing.
+- Names **input handling or screen feel** (the number pad dismissing between
+  sets, scroll behaviour, transitions) → either path serves it; fall through to
+  Step 4.
+
+- [ ] **Step 4: Weigh what actually differs**
+
+Discard the three non-differentiators first: **both paths need Xcode, both need
+the same ~$99/yr for a long-lived device install, and both rebuild every
+screen.** React Native shares this app's *logic*, never its components —
+`src/components/` is JSX over DOM elements and Tailwind classes, none of which
+exist in React Native.
+
+| | React Native (Expo) | Swift / SwiftUI |
+| - | ------------------- | --------------- |
+| Language | TypeScript — already known | Swift — genuinely new |
+| `packages/core` | Imported directly | Ported by hand, tests as checklist |
+| Android, ever | Nearly free | Never, without a third codebase |
+| Native depth | Good | Maximum |
+| Toolchain | Expo SDK + Metro + Xcode | Xcode only |
+| Ongoing upkeep | Periodic Expo SDK upgrades | Annual iOS release cycle |
+
+The spec's leaning is Swift for a single-user, iOS-only gym app. Treat that as
+the position to argue against, not as the answer.
+
+- [ ] **Step 5: Record the decision and commit**
+
+Append to the spec: the named deficiency, the branch chosen, and the one
+sentence of reasoning that decided it. Then:
+
+```bash
+git add docs/superpowers/specs/2026-09-15-mobile-strategy.md
+git commit -m "docs: resolve D9 — native client will be <React Native|Swift>"
+```
+
+- [ ] **Step 6: Write the Phase 3 plan**
+
+Use superpowers:writing-plans against whichever branch sketch below applies.
+Do not execute from the sketch — it is scope, not steps.
+
+---
+
+## What Phases 1–2 already paid for (both branches)
+
+The database, RLS policies, auth configuration, and the entire Supabase setup
+need nothing. Spec D4 holds: one project, one database, the native client is
+simply another authenticated reader and writer of the same rows.
+
+Spec D5 also holds on both branches — `supabase-js` and `supabase-swift` are
+both first-party and both authenticate against the same RLS policies, so the
+native client talks to Supabase directly rather than through a re-exposed API.
+
+## Branch 3A — React Native (Expo)
+
+1. `apps/mobile` scaffolded with Expo, using a **development build**
+   (`expo-dev-client`), not Expo Go — Expo Go cannot load the native modules
+   this needs.
+2. Supabase auth on-device: `@supabase/supabase-js` with `expo-secure-store` as
+   the session store, plus a deep-link scheme (`gymtrack://auth-callback`) added
+   to Supabase Auth's redirect allow list. `@supabase/ssr`, which the web app
+   uses, is server-side only and does not apply here.
+3. `@gymtrack/core` added as a workspace dependency. Metro resolves the
+   workspace symlink the same way Next does; no build step, no duplication.
+4. Every screen rebuilt: login, home, workout logging, history.
+5. Rewriting the data layer. `src/lib/data/*` and `src/app/**/actions.ts` are
+   `server-only` and Server Actions respectively; per D5 the app calls Supabase
+   directly.
+6. Distribution, and the ~$99/yr decision deferred by D6.
+
+## Branch 3B — Swift / SwiftUI
+
+1. `apps/ios` as an Xcode project. It needs no workspace entry — npm ignores
+   directories without a `package.json`, so the existing `apps/*` glob is safe.
+2. `supabase-swift` via Swift Package Manager: auth with the Keychain as the
+   session store, PostgREST for queries, and the same deep-link scheme added to
+   Supabase Auth's redirect allow list.
+3. **Port `packages/core` to Swift, using its 36 tests as the conformance
+   checklist.** This is the concrete cost of this branch over 3A. Budget for the
+   parts that are easy to get subtly wrong: the Europe/Berlin date handling
+   (`localDateString` deliberately avoids `toISOString`, which is UTC), the
+   German decimal comma in `formatWeight`, and the ghost-value index mapping
+   that lines row *i* up with row *i* of the last session.
+4. Every screen rebuilt in SwiftUI.
+5. Same data-layer rewrite as 3A item 5, for the same reason.
+6. Distribution, and the ~$99/yr decision deferred by D6.
+
+**The honest warning, unchanged by the fork:** a native client is a second UI to
+build and then keep in sync with the web app forever. Branch 3B adds a second
+copy of the business rules to that. Have the named deficiency from Task 10
+Step 6 in hand before agreeing to either.
 
 ---
 
 ## Self-Review
 
-**Spec coverage:** D1 → Phases 2 and 3 ordering. D2/D3 → Tasks 1–2. D4 → no schema change anywhere; verified in Task 10 Step 5. D5 → Phase 3 item 4. D6 → Phase 3 item 5. D7 → Phase 3 item 3 (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 7. Hazard 1 → Task 8. Hazard 2 → Task 6. Hazard 3 → Task 7's preamble and Step 7. Hazard 4 → Task 9's preamble and Step 8. The manual Vercel and device steps are Tasks 3 and 10, both marked.
+**Spec coverage:** D1 → Phases 2 and 3 ordering. D2/D3 → Tasks 1–2, with D2's revised justification reproduced at the head of Task 2. D4 → no schema change anywhere; verified in Task 10 Step 5, restated in Phase 3's shared preamble. D5 → Phase 3's shared preamble plus item 5 of both branch sketches. D6 → item 6 of both branch sketches, and Task 11 Step 4's note that the fee is not a differentiator. D7 → item 4 of both branch sketches (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 7. D9 → Task 11 end to end. Hazard 1 → Task 8. Hazard 2 → Task 6. Hazard 3 → Task 7's preamble and Step 7. Hazard 4 → Task 9's preamble and Step 8. The manual Vercel and device steps are Tasks 3 and 10, both marked.
 
-**Type consistency:** `DisplayEnvironment` and `preferPasswordLogin` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and Phase 3. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
+**Type consistency:** `DisplayEnvironment` and `preferPasswordLogin` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
 
-**Test-count ledger:** 36 at baseline (Task 1 Step 1), 36 after both refactor tasks, 40 after Task 8 adds four. Task 9 Step 9 expects 40.
+**Test-count ledger:** 36 at baseline (Task 1 Step 1), 36 after both refactor tasks, 40 after Task 8 adds four. Task 9 Step 9 expects 40. Note that Phase 3 Branch 3B cites "36 tests" as the Swift port's conformance checklist — that is the `packages/core` count at the end of Task 2, deliberately excluding the four PWA-only `preferPasswordLogin` tests, which have no Swift equivalent.
+
+**Fork neutrality:** Tasks 1–10 name no native framework. Task 11 is a decision with a written deliverable, not code. Branches 3A and 3B are scope sketches, marked not-executable.
