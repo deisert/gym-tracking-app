@@ -63,3 +63,11 @@ $$;
 create trigger on_workout_exercise_added
   after insert on workout_exercises
   for each row execute function touch_exercise_last_picked();
+
+-- A trigger function needs no EXECUTE grant: Postgres checks that privilege
+-- when the trigger is created, never when it fires (verified against this
+-- project — the trigger still fires after the revoke). Without this, Supabase's
+-- default grants leave a `security definer` function callable by anon and
+-- authenticated over `/rest/v1/rpc/touch_exercise_last_picked`, which the
+-- database linter flags as lint 0028/0029.
+revoke execute on function touch_exercise_last_picked() from anon, authenticated, public;
