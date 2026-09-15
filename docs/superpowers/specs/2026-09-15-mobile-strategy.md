@@ -40,9 +40,15 @@ The restructure is still correct, on two grounds that hold regardless of the for
    migrating a shared package out from under a running second app. A small certain
    cost against a large conditional one.
 2. **It is right for the web app alone.** Separating pure business rules from
-   framework code is good structure with one app. `packages/core` runs its 36
+   framework code is good structure with one app. `packages/core` runs its 75
    tests in milliseconds without booting Next, and the rules live in one auditable
    place instead of being spread through `src/lib/`.
+
+Note that purity alone is not the admission criterion — **portability** is.
+`swipe-gesture.ts` has zero imports and is perfectly pure, but it is web
+pointer-event math (rubber-banding, tap slop, commit thresholds). Gesture
+handling on either native path is platform-native, so it stays in `apps/web`
+with its 22 tests.
 
 What changes is only what `packages/core` *is* on each branch:
 
@@ -50,7 +56,7 @@ What changes is only what `packages/core` *is* on each branch:
   symlink the same way Next does. Full reuse.
 - **Swift:** an executable specification. The Epley formula, ghost-value index
   mapping, German decimal formatting, the Europe/Berlin date handling, and the
-  validation bounds are stated once and covered by 36 tests. A Swift port reads
+  validation bounds are stated once and covered by 75 tests. A Swift port reads
   from it, and those tests become the conformance checklist for the port.
 
 The second is genuinely weaker than the first. It is not nothing.
@@ -107,7 +113,8 @@ gym-tracking-app/
   apps/mobile/     Expo — only on the React Native branch
   apps/ios/        Xcode project — only on the Swift branch; needs no
                    workspace entry, npm ignores directories with no package.json
-  packages/core/   types, validation, sets, dates + their vitest tests
+  packages/core/   types, validation, sets, dates, exercise-search,
+                   workout-summary + their 75 vitest tests
   supabase/        stays at root: one schema, one source of truth
   docs/            stays at root
 ```

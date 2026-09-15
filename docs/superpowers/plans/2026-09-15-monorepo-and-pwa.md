@@ -4,7 +4,7 @@
 
 **Goal:** Restructure the repo as an npm-workspaces monorepo with a shared `@gymtrack/core` package, then turn the existing Next.js web app into an installable, connectivity-resilient PWA that lives on an iPhone 15 Pro home screen.
 
-**Architecture:** The Next.js app moves wholesale into `apps/web`. The four pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`) plus their 36 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
+**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 75 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
 
 **Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 2 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
 
@@ -21,7 +21,8 @@
 - **UI copy is German.** Match the existing tone in `src/app/login/page.tsx` and `src/components/`.
 - **Theme colour is `#111317`** (the rendered value of `--background: hsl(220 15% 8%)`). Use that literal hex in manifest and viewport metadata.
 - **Node/npm:** npm workspaces requires npm 7+. One lockfile at the repo root only.
-- **Tests must stay green throughout.** The suite is 36 tests; a task that reduces that count without deleting a behaviour is a regression.
+- **Tests must stay green throughout.** The suite is **97 tests in 6 files**, measured against `24e6c2d` on 2026-09-15. A task that reduces that count without deleting a behaviour is a regression.
+- **`swipe-gesture.ts` stays in `apps/web`.** It has zero imports and is perfectly pure, so it looks like a `packages/core` candidate — but it is *web pointer-event* math (rubber-banding, tap slop, commit thresholds). Gesture handling on either native path is platform-native, so none of it transfers. Purity is not the criterion; portability is.
 - **Read `node_modules/next/dist/docs/` before writing Next-specific code.** This is Next 16; APIs differ from older releases. Relevant guides: `01-app/02-guides/progressive-web-apps.md`, `01-app/02-guides/offline-support.md`, `01-app/03-api-reference/03-file-conventions/01-metadata/manifest.md`.
 
 ---
@@ -143,8 +144,9 @@ gym-tracking-app/
     tsconfig.json
     vitest.config.ts
     src/index.ts                barrel re-export
-    src/{types,validation,sets,dates}.ts
-    src/{validation,sets,dates}.test.ts
+    src/{types,validation,sets,dates,exercise-search,workout-summary}.ts
+    src/{validation,sets,dates,exercise-search,workout-summary}.test.ts
+                                75 of the 97 tests; swipe-gesture stays in apps/web
   supabase/                     unchanged, stays at root
   docs/                         unchanged, stays at root
 ```
@@ -158,8 +160,8 @@ gym-tracking-app/
   public/sw.js                  static-asset cache + offline fallback
   src/app/manifest.ts           MetadataRoute.Manifest
   src/app/offline/page.tsx      static offline fallback route
-  src/app/loading.tsx           prefetchable shell for `/`
-  src/app/history/loading.tsx
+  src/app/loading.tsx           prefetchable shell for `/` (Verlauf)
+  src/app/dashboard/loading.tsx
   src/app/workout/[id]/loading.tsx
   src/components/pwa/offline-banner.tsx
   src/components/pwa/install-hint.tsx
@@ -169,7 +171,7 @@ gym-tracking-app/
 **Added in Phase 2 (under `packages/core/`):**
 
 ```
-  src/pwa.ts                    pure display-mode/platform predicates
+  src/pwa.ts                    pure display-mode/platform predicate
   src/pwa.test.ts
 ```
 
@@ -207,7 +209,7 @@ npm test 2>&1 | tail -5
 npx tsc --noEmit && echo "TSC CLEAN"
 ```
 
-Expected: vitest reports `Tests  36 passed (36)`, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
+Expected: vitest reports `Tests  97 passed (97)` across 6 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
 
 - [ ] **Step 2: Move the app**
 
@@ -296,7 +298,7 @@ npm run typecheck
 npm run build 2>&1 | tail -20
 ```
 
-Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 36 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/history`, `/login`, `/workout/[id]`.
+Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 97 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
 
 - [ ] **Step 7: Verify the dev server still runs through the launch config**
 
@@ -321,20 +323,20 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > 1. **Asymmetric cost.** Doing this now and later choosing Swift wastes about an
 >    hour of directory structure. *Not* doing it and later choosing React Native
 >    means migrating a shared package out from under a running second app.
-> 2. **It is right for the web app alone.** The 36 tests run in milliseconds
+> 2. **It is right for the web app alone.** The 75 moved tests run in milliseconds
 >    without booting Next, and the business rules live in one auditable place.
 >
 > On the Swift branch `packages/core` becomes an *executable specification*
 > rather than a dependency: the Epley formula, ghost-value index mapping, German
 > decimal formatting, Europe/Berlin date handling and validation bounds stated
-> once, with 36 tests that become the conformance checklist for a Swift port.
+> once, with 75 tests that become the conformance checklist for a Swift port.
 > That is real, and weaker than direct reuse. Execute this task either way.
 
 **Files:**
 - Create: `packages/core/package.json`, `packages/core/tsconfig.json`, `packages/core/vitest.config.ts`, `packages/core/src/index.ts`
-- Move: `apps/web/src/lib/{types,sets,dates,validation}.ts` → `packages/core/src/`
-- Move: `apps/web/src/lib/{sets,dates,validation}.test.ts` → `packages/core/src/`
-- Modify: `apps/web/next.config.ts`, `apps/web/package.json`, and the 21 files importing `@/lib/{types,sets,dates,validation}`
+- Move: `apps/web/src/lib/{types,sets,dates,validation,exercise-search,workout-summary}.ts` → `packages/core/src/`
+- Move: `apps/web/src/lib/{sets,dates,validation,exercise-search,workout-summary}.test.ts` → `packages/core/src/`
+- Modify: `apps/web/next.config.ts`, `apps/web/package.json`, and the **14 files** carrying the **26 import lines** listed in Step 9
 - Delete: `apps/web/vitest.config.js`
 
 **Interfaces:**
@@ -345,6 +347,8 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
   - `formatWeight(kg: number): string`, `formatSetSummary`, `nextPosition`
   - `localDateString(date: Date): string`, `startOfWeekMonday`, `todayInAppTimezone`, `formatPerformedOn`
   - zod schemas `setInputSchema`, `workoutMetaSchema`, `exerciseNameSchema`, `authEmailSchema`, `authNameSchema`
+  - `type ExercisePickerOption`, `sortByRecency`, `filterExercises`
+  - `type ExerciseSummary`, `type WorkoutSummaryStats`, `summarizeWorkout`, `formatKilos`, `formatVolume`
 
   The exact export list must be read off the moved files, not guessed — re-export everything each module currently exports.
 
@@ -422,22 +426,30 @@ git mv apps/web/src/lib/types.ts \
        apps/web/src/lib/sets.ts \
        apps/web/src/lib/dates.ts \
        apps/web/src/lib/validation.ts \
+       apps/web/src/lib/exercise-search.ts \
+       apps/web/src/lib/workout-summary.ts \
        packages/core/src/
 git mv apps/web/src/lib/sets.test.ts \
        apps/web/src/lib/dates.test.ts \
        apps/web/src/lib/validation.test.ts \
+       apps/web/src/lib/exercise-search.test.ts \
+       apps/web/src/lib/workout-summary.test.ts \
        packages/core/src/
 git rm apps/web/vitest.config.js
 ```
 
 - [ ] **Step 5: Rewrite intra-package imports as relative**
 
-Four files inside `packages/core/src/` still use the `@/lib/...` alias, which no longer exists here:
+Eight files inside `packages/core/src/` still use the `@/lib/...` alias, which no longer exists here. Line numbers are against `24e6c2d`; trust the grep in the next step over the numbers:
 
-- `sets.ts` line 1: `import type { LastPerformance, SetRecord } from "@/lib/types";` → `from "./types"`
-- `sets.test.ts` line 8: `from "@/lib/types"` → `from "./types"`; line 7's `from "@/lib/sets"` → `from "./sets"`
-- `dates.test.ts` line 2: `from "@/lib/dates"` → `from "./dates"`
-- `validation.test.ts` line 8: `from "@/lib/validation"` → `from "./validation"`
+- `sets.ts:1` — `from "@/lib/types"` → `"./types"`
+- `exercise-search.ts:1` — `from "@/lib/types"` → `"./types"`
+- `workout-summary.ts:1` — `from "@/lib/types"` → `"./types"`
+- `sets.test.ts` — `"@/lib/sets"` → `"./sets"`, `"@/lib/types"` → `"./types"`
+- `dates.test.ts:2` — `"@/lib/dates"` → `"./dates"`
+- `validation.test.ts:9` — `"@/lib/validation"` → `"./validation"`
+- `exercise-search.test.ts:3-4` — both `"@/lib/exercise-search"` → `"./exercise-search"`
+- `workout-summary.test.ts:3-4` — `"@/lib/workout-summary"` → `"./workout-summary"`, `"@/lib/types"` → `"./types"`
 
 Verify none are left:
 
@@ -456,6 +468,8 @@ export * from "./types";
 export * from "./dates";
 export * from "./sets";
 export * from "./validation";
+export * from "./exercise-search";
+export * from "./workout-summary";
 ```
 
 `export *` does not forward type-only exports in every configuration, so confirm the type names survive in Step 8's typecheck. If a type goes missing, add an explicit `export type { ... } from "./types";` line.
@@ -466,7 +480,7 @@ export * from "./validation";
 npm test --workspace packages/core 2>&1 | tail -5
 ```
 
-Expected: PASS, and the count equals the sum of the three moved files' tests. If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
+Expected: PASS, `Tests  75 passed (75)` — dates 7, sets 17, validation 25, exercise-search 14, workout-summary 12. The remaining 22 are `swipe-gesture.test.ts`, which stays in `apps/web`. If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
 
 - [ ] **Step 8: Point the web app at the package**
 
@@ -500,40 +514,41 @@ npm install
 
 - [ ] **Step 9: Rewrite the web app's imports**
 
-Replace every `@/lib/types`, `@/lib/sets`, `@/lib/dates`, and `@/lib/validation` specifier with `@gymtrack/core`. There are 21 such lines across these files:
+Replace every `@/lib/{types,sets,dates,validation,exercise-search,workout-summary}` specifier with `@gymtrack/core`. Verified against `24e6c2d`: **26 lines across 14 files**.
 
 ```
-src/app/history/page.tsx
-src/app/login/actions.ts
-src/app/page.tsx
-src/app/workout/[id]/page.tsx
-src/app/workout/actions.ts
-src/components/workout/exercise-card.tsx
-src/components/workout/exercise-picker.tsx
-src/components/workout/set-list.tsx
-src/components/workout/set-row.tsx
-src/components/workout/start-workout-button.tsx
-src/components/workout/workout-header.tsx
-src/lib/data/exercises.ts
-src/lib/data/workouts.ts
+src/app/page.tsx                                  dates
+src/app/login/actions.ts                          validation
+src/app/workout/actions.ts                        dates, sets, types, validation
+src/app/workout/[id]/page.tsx                     dates, sets, workout-summary
+src/components/workout/end-workout-button.tsx     workout-summary ×2
+src/components/workout/exercise-card.tsx          types
+src/components/workout/exercise-picker.tsx        exercise-search ×2
+src/components/workout/set-list.tsx               sets, types
+src/components/workout/set-row.tsx                sets ×2
+src/components/workout/start-workout-button.tsx   dates
+src/components/workout/workout-header.tsx         dates
+src/components/workout/workout-list.tsx           dates, types
+src/lib/data/exercises.ts                         exercise-search ×2, types
+src/lib/data/workouts.ts                          types
 ```
 
-Several files import from two of the four modules (`workout/actions.ts` imports from three). Merge those into a single `@gymtrack/core` import per file rather than leaving duplicate specifiers — ESLint's `no-duplicate-imports` will otherwise flag them. Keep `import type` on the lines that have it.
+Several files import from two or more modules (`workout/actions.ts` from four). Merge those into a single `@gymtrack/core` import per file rather than leaving duplicate specifiers — ESLint's `no-duplicate-imports` will otherwise flag them. Keep `import type` on the lines that have it.
 
 Mechanical first pass, then fix the duplicates by hand:
 
 ```bash
-cd apps/web && grep -rl "@/lib/\(types\|sets\|dates\|validation\)" src \
-  | xargs sed -i '' 's|"@/lib/\(types\|sets\|dates\|validation\)"|"@gymtrack/core"|g'
+cd apps/web && grep -rl "@/lib/\(types\|sets\|dates\|validation\|exercise-search\|workout-summary\)" src \
+  | xargs sed -i '' 's|"@/lib/\(types\|sets\|dates\|validation\|exercise-search\|workout-summary\)"|"@gymtrack/core"|g'
 ```
 
 - [ ] **Step 10: Verify no stale references remain**
 
 ```bash
-grep -rn "@/lib/\(types\|sets\|dates\|validation\)" apps/web/src && echo "STALE" || echo "CLEAN"
+grep -rn "@/lib/\(types\|sets\|dates\|validation\|exercise-search\|workout-summary\)" apps/web/src && echo "STALE" || echo "CLEAN"
 ```
 
-Expected: `CLEAN`. `@/lib/utils`, `@/lib/supabase/*`, `@/lib/data/*`, and `@/lib/site-url` stay where they are and must still appear in other greps — they are web-only.
+Expected: `CLEAN`. `@/lib/utils`, `@/lib/supabase/*`, `@/lib/data/*`, `@/lib/site-url` and `@/lib/swipe-gesture` stay where they are and must still appear in other greps — they are web-only.
 
 - [ ] **Step 11: Full verification**
 
@@ -544,11 +559,11 @@ npm run lint
 npm run build 2>&1 | tail -20
 ```
 
-Expected: the same 36 tests pass (now reported across two workspaces), typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
+Expected: 97 tests still pass, now split 75 in `packages/core` and 22 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
 
 - [ ] **Step 12: Verify at runtime, not just at build time**
 
-Start the dev server and exercise the one flow that touches all four moved modules at once: log in, start a workout, add an exercise, log a set. Ghost values come from `sets.ts`, the German weight formatting from `formatWeight`, the date header from `dates.ts`, and the set validation from `validation.ts`. A green build with a broken barrel export is possible; this step is what catches it.
+Start the dev server and exercise the one flow that touches every moved module: log in, start a workout, add an exercise (the picker's recency ordering is `exercise-search.ts`), log a set, then end the workout (the summary is `workout-summary.ts`). Ghost values come from `sets.ts`, German weight formatting from `formatWeight`, the date header from `dates.ts`, set validation from `validation.ts`. A green build with a broken barrel export is possible; this step is what catches it.
 
 - [ ] **Step 13: Commit**
 
@@ -834,7 +849,9 @@ git commit -m "feat(pwa): add web app manifest and iOS home-screen metadata"
 
 - [ ] **Step 1: Pad the tab bar's inner row**
 
-In `bottom-tabs.tsx`, the `<nav>` keeps `fixed inset-x-0 bottom-0` so its background still bleeds to the screen edge; the padding goes on the inner row so the touch targets move up but the colour does not stop short:
+`bottom-tabs.tsx` still holds exactly two tabs, now `/` ("Verlauf") and `/dashboard` — the Today/History merge in `a304779` replaced one pair with another. The `TABS` array is not touched by this task and the `<nav>` element below is byte-identical to what is in the file.
+
+The `<nav>` keeps `fixed inset-x-0 bottom-0` so its background still bleeds to the screen edge; the padding goes on the inner row so the touch targets move up but the colour does not stop short:
 
 ```tsx
 <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
@@ -882,7 +899,7 @@ Next 16 ships `experimental.useOffline`: a Server Action whose fetch fails on a 
 
 **Files:**
 - Modify: `apps/web/next.config.ts`, `apps/web/src/app/layout.tsx`
-- Create: `apps/web/src/components/pwa/offline-banner.tsx`, `apps/web/src/app/loading.tsx`, `apps/web/src/app/history/loading.tsx`, `apps/web/src/app/workout/[id]/loading.tsx`
+- Create: `apps/web/src/components/pwa/offline-banner.tsx`, `apps/web/src/app/loading.tsx`, `apps/web/src/app/dashboard/loading.tsx`, `apps/web/src/app/workout/[id]/loading.tsx`
 
 **Interfaces:**
 - Consumes: `transpilePackages` already present in `next.config.ts` from Task 2 — extend that object, do not replace it.
@@ -974,7 +991,9 @@ export default function Loading() {
 }
 ```
 
-`apps/web/src/app/history/loading.tsx` and `apps/web/src/app/workout/[id]/loading.tsx`: same content. Duplicating eight lines is cheaper here than a shared component, and each route is free to diverge later.
+`apps/web/src/app/dashboard/loading.tsx` and `apps/web/src/app/workout/[id]/loading.tsx`: same content. Duplicating eight lines is cheaper here than a shared component, and each route is free to diverge later.
+
+There is no `/history` route. `a304779` merged Today and History into the single Verlauf screen at `/`, and `/dashboard` took the second tab. The three routes worth a shell are `/`, `/dashboard` and `/workout/[id]`; `/login` needs none, since it is never reached by a soft navigation from inside the app.
 
 - [ ] **Step 5: Verify the flag took effect**
 
@@ -1014,7 +1033,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 36 tests still passing, typecheck and lint silent.
+Expected: 97 tests still passing, typecheck and lint silent.
 
 - [ ] **Step 9: Commit**
 
@@ -1025,9 +1044,25 @@ git commit -m "feat(pwa): retry blocked requests and surface offline state"
 
 ---
 
-## Task 8: Prefer password login inside the installed app
+## Task 8: Warn about magic links inside the installed app
 
-An iOS standalone PWA has its own cookie jar, separate from Safari's. A magic link opens in Safari, so the session cookie lands in Safari and the installed app stays logged out — a dead end with no visible cause. `loginWithPassword` already exists in `src/app/login/actions.ts` and completes entirely in-app, so the fix is to lead with it when running standalone.
+> **Scope reduced after re-checking the tree.** This task was written to reorder
+> the login forms so password came first inside standalone mode. **That is
+> already done** — commit `0c4b1b4` made password the default for both forms,
+> and `auth-card.tsx` says so in its own comment: *"Password is the default for
+> both forms; magic link is the secondary, passwordless fallback."* Both
+> `signupUsePassword` and `loginUsePassword` initialise to `true` unless an
+> error arrived from the magic path itself.
+>
+> The hazard is therefore already mitigated for the default path: you no longer
+> reach for a magic link without deliberately switching to it. What remains is
+> the narrow case — you *do* switch to the magic sub-form while running as an
+> installed app, and get stranded with no visible cause. This task adds a
+> warning there and nothing else.
+>
+> **It is legitimate to skip this task entirely.** It buys one sentence of
+> explanation for a path you have to go out of your way to reach. Decide before
+> executing rather than during.
 
 **Files:**
 - Create: `packages/core/src/pwa.ts`, `packages/core/src/pwa.test.ts`
@@ -1035,9 +1070,13 @@ An iOS standalone PWA has its own cookie jar, separate from Safari's. A magic li
 
 **Interfaces:**
 - Consumes: `@gymtrack/core` from Task 2.
-- Produces: `preferPasswordLogin(env: DisplayEnvironment): boolean` and `type DisplayEnvironment = { isIOS: boolean; isStandalone: boolean }`, both exported from `@gymtrack/core`.
+- Produces: `magicLinkWillStrand(env: DisplayEnvironment): boolean` and
+  `type DisplayEnvironment = { isIOS: boolean; isStandalone: boolean }`, both
+  exported from `@gymtrack/core`.
 
-The predicate takes its inputs as an argument rather than reading `navigator` itself. That keeps it pure, keeps `packages/core` free of DOM types per the Global Constraints, and makes it reusable from a React Native app later.
+The predicate takes its inputs as an argument rather than reading `navigator`
+itself. That keeps it pure, keeps `packages/core` free of DOM types per the
+Global Constraints, and lets the component do the reading.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1045,23 +1084,23 @@ Create `packages/core/src/pwa.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import { preferPasswordLogin } from "./pwa";
+import { magicLinkWillStrand } from "./pwa";
 
-describe("preferPasswordLogin", () => {
-  it("prefers password inside an installed iOS app", () => {
-    expect(preferPasswordLogin({ isIOS: true, isStandalone: true })).toBe(true);
+describe("magicLinkWillStrand", () => {
+  it("strands the user inside an installed iOS app", () => {
+    expect(magicLinkWillStrand({ isIOS: true, isStandalone: true })).toBe(true);
   });
 
-  it("keeps magic link in mobile Safari, where the redirect lands correctly", () => {
-    expect(preferPasswordLogin({ isIOS: true, isStandalone: false })).toBe(false);
+  it("is fine in mobile Safari, where the redirect lands in the same browser", () => {
+    expect(magicLinkWillStrand({ isIOS: true, isStandalone: false })).toBe(false);
   });
 
-  it("keeps magic link in an installed non-iOS app, which shares its cookie jar", () => {
-    expect(preferPasswordLogin({ isIOS: false, isStandalone: true })).toBe(false);
+  it("is fine in an installed non-iOS app, which shares its cookie jar", () => {
+    expect(magicLinkWillStrand({ isIOS: false, isStandalone: true })).toBe(false);
   });
 
-  it("keeps magic link on the desktop web", () => {
-    expect(preferPasswordLogin({ isIOS: false, isStandalone: false })).toBe(false);
+  it("is fine on the desktop web", () => {
+    expect(magicLinkWillStrand({ isIOS: false, isStandalone: false })).toBe(false);
   });
 });
 ```
@@ -1087,16 +1126,16 @@ export type DisplayEnvironment = {
 };
 
 /**
- * True when the magic-link flow would strand the user.
+ * True when following a magic link would leave the user logged out.
  *
  * An installed iOS PWA keeps a cookie jar separate from Safari's. The link in
  * the email opens in Safari, so the session is created there and the installed
  * app never sees it — the user taps the link, sees "logged in", returns to the
- * app and is still at the login screen. Password login completes in-app and
- * has no such gap. Other platforms share cookies between the installed app and
- * the browser, so magic link stays the better default there.
+ * app and is still at the login screen, with nothing on screen explaining why.
+ * Other platforms share cookies between the installed app and the browser, so
+ * the round trip completes normally there.
  */
-export function preferPasswordLogin(env: DisplayEnvironment): boolean {
+export function magicLinkWillStrand(env: DisplayEnvironment): boolean {
   return env.isIOS && env.isStandalone;
 }
 ```
@@ -1107,7 +1146,7 @@ export function preferPasswordLogin(env: DisplayEnvironment): boolean {
 npm test --workspace packages/core 2>&1 | tail -10
 ```
 
-Expected: PASS, 4 new tests.
+Expected: PASS, `Tests  79 passed (79)` — the 75 from Task 2 plus these four.
 
 - [ ] **Step 5: Export it from the barrel**
 
@@ -1117,24 +1156,25 @@ Add to `packages/core/src/index.ts`:
 export * from "./pwa";
 ```
 
-- [ ] **Step 6: Read the environment in the auth card**
+- [ ] **Step 6: Show the warning on the magic sub-form**
 
-`auth-card.tsx` is already a `"use client"` component holding a `Mode` state, so this is an edit in place — no extraction and no new component needed. Add the import and the state alongside what is there.
+`auth-card.tsx` is already a `"use client"` component holding `mode`,
+`signupUsePassword` and `loginUsePassword` state, so this is an edit in place.
 
-Detection must run in an effect, not during render: it touches `navigator` and `matchMedia`, which do not exist during SSR, and the first render must match the server's HTML or React will log a hydration mismatch.
+Detection must run in an effect, not during render: it touches `navigator` and
+`matchMedia`, which do not exist during SSR, and the first render must match the
+server's HTML or React logs a hydration mismatch.
 
 ```tsx
-"use client";
-
 import { useEffect, useState } from "react";
-import { preferPasswordLogin } from "@gymtrack/core";
+import { magicLinkWillStrand } from "@gymtrack/core";
 
 // ...inside the component:
-const [passwordFirst, setPasswordFirst] = useState(false);
+const [magicStrands, setMagicStrands] = useState(false);
 
 useEffect(() => {
-  setPasswordFirst(
-    preferPasswordLogin({
+  setMagicStrands(
+    magicLinkWillStrand({
       isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
       isStandalone: window.matchMedia("(display-mode: standalone)").matches,
     })
@@ -1142,37 +1182,42 @@ useEffect(() => {
 }, []);
 ```
 
-When `passwordFirst` is true, render the password form above the magic-link form and add this note under the magic-link section:
+Render this inside each magic-link sub-form — the branches guarded by
+`!signupUsePassword` and `!loginUsePassword` — and nowhere else:
 
 ```tsx
-<p className="text-xs text-muted-foreground">
-  Magic-Links öffnen sich in Safari, nicht in der App. Melde dich hier mit
-  deinem Passwort an.
-</p>
+{magicStrands && (
+  <p className="text-xs text-muted-foreground">
+    Der Link öffnet sich in Safari, nicht in dieser App. Du bleibst hier dann
+    abgemeldet – nimm lieber dein Passwort.
+  </p>
+)}
 ```
 
-When it is false, keep the current order and omit the note. `useState(false)` means the server-rendered order is the existing one, so nothing shifts for web visitors.
+`useState(false)` means the server-rendered output is unchanged, so nothing
+shifts for web visitors.
 
-- [ ] **Step 7: Verify both orderings**
+- [ ] **Step 7: Verify both states**
 
-Run the dev server and open `/login`. Expected: the current layout, unchanged, with no note. Then force the standalone branch:
+Run the dev server and open `/login`. Expected: the password form, unchanged, no
+note. Switch to the magic sub-form: still no note, because a desktop browser is
+neither iOS nor standalone.
 
-```js
-window.matchMedia = (q) => ({ matches: q.includes('standalone'), media: q, addEventListener(){}, removeEventListener(){} });
-location.reload()
-```
-
-That stub is lost on reload, so instead verify by resizing to the mobile preset and checking the DOM order directly, or temporarily hard-code `setPasswordFirst(true)` and screenshot. Expected: the password form renders first and the German note appears. Undo any temporary hard-coding before committing.
+Then temporarily hard-code `setMagicStrands(true)`, reload, and switch to the
+magic sub-form. Expected: the German warning appears there, and **only** there —
+not on the password form. Undo the hard-coding before committing.
 
 - [ ] **Step 8: Check the console for hydration warnings**
 
-Read the browser console. Expected: no "Hydration failed" or "Text content did not match" entries. Any such warning means the detection leaked into render — move it into the effect.
+Read the browser console. Expected: no "Hydration failed" or "Text content did
+not match" entries. Any such warning means the detection leaked into render —
+move it into the effect.
 
 - [ ] **Step 9: Commit**
 
 ```bash
 git add -A
-git commit -m "fix(pwa): lead with password login inside the installed iOS app"
+git commit -m "feat(pwa): warn that magic links strand the installed iOS app"
 ```
 
 ---
@@ -1372,7 +1417,7 @@ Then confirm nothing dangerous was cached:
 await caches.open('gymtrack-static-v1').then(c => c.keys()).then(ks => ks.map(k => new URL(k.url).pathname))
 ```
 
-Expected: `/offline` plus `/_next/static/...` entries only. **If any workout, history, or login path appears in that list, the fetch handler is wrong — fix it before committing.** Serving a cached workout page would show stale sets.
+Expected: `/offline` plus `/_next/static/...` entries only. **If any workout, dashboard, or login path appears in that list, the fetch handler is wrong — fix it before committing.** Serving a cached workout page would show stale sets.
 
 - [ ] **Step 9: Full suite**
 
@@ -1382,7 +1427,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 40 tests passing (36 original + 4 from Task 8), typecheck and lint silent.
+Expected: 101 tests passing (97 original + 4 from Task 8), split 79 in `packages/core` and 22 in `apps/web`; typecheck and lint silent.
 
 - [ ] **Step 10: Commit**
 
@@ -1532,7 +1577,7 @@ native client talks to Supabase directly rather than through a re-exposed API.
    uses, is server-side only and does not apply here.
 3. `@gymtrack/core` added as a workspace dependency. Metro resolves the
    workspace symlink the same way Next does; no build step, no duplication.
-4. Every screen rebuilt: login, home, workout logging, history.
+4. Every screen rebuilt: login, the Verlauf overview, workout logging, dashboard.
 5. Rewriting the data layer. `src/lib/data/*` and `src/app/**/actions.ts` are
    `server-only` and Server Actions respectively; per D5 the app calls Supabase
    directly.
@@ -1545,7 +1590,7 @@ native client talks to Supabase directly rather than through a re-exposed API.
 2. `supabase-swift` via Swift Package Manager: auth with the Keychain as the
    session store, PostgREST for queries, and the same deep-link scheme added to
    Supabase Auth's redirect allow list.
-3. **Port `packages/core` to Swift, using its 36 tests as the conformance
+3. **Port `packages/core` to Swift, using its 75 tests as the conformance
    checklist.** This is the concrete cost of this branch over 3A. Budget for the
    parts that are easy to get subtly wrong: the Europe/Berlin date handling
    (`localDateString` deliberately avoids `toISOString`, which is UTC), the
@@ -1564,10 +1609,12 @@ Step 6 in hand before agreeing to either.
 
 ## Self-Review
 
-**Spec coverage:** D1 → Phases 2 and 3 ordering. D2/D3 → Tasks 1–2, with D2's revised justification reproduced at the head of Task 2. D4 → no schema change anywhere; verified in Task 10 Step 5, restated in Phase 3's shared preamble. D5 → Phase 3's shared preamble plus item 5 of both branch sketches. D6 → item 6 of both branch sketches, and Task 11 Step 4's note that the fee is not a differentiator. D7 → item 4 of both branch sketches (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 7. D9 → Task 11 end to end. Hazard 1 → Task 8. Hazard 2 → Task 6. Hazard 3 → Task 7's preamble and Step 7. Hazard 4 → Task 9's preamble and Step 8. The manual Vercel and device steps are Tasks 3 and 10, both marked.
+**Spec coverage:** D1 → Phases 2 and 3 ordering. D2/D3 → Tasks 1–2, with D2's revised justification reproduced at the head of Task 2. D4 → no schema change anywhere; verified in Task 10 Step 5, restated in Phase 3's shared preamble. D5 → Phase 3's shared preamble plus item 5 of both branch sketches. D6 → item 6 of both branch sketches, and Task 11 Step 4's note that the fee is not a differentiator. D7 → item 4 of both branch sketches (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 7. D9 → Task 11 end to end. Hazard 1 → largely pre-empted by `0c4b1b4`; the residual case is Task 8, which is explicitly marked skippable. Hazard 2 → Task 6. Hazard 3 → Task 7's preamble and Step 7. Hazard 4 → Task 9's preamble and Step 8. The manual Vercel and device steps are Tasks 3 and 10, both marked.
 
-**Type consistency:** `DisplayEnvironment` and `preferPasswordLogin` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
+**Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
 
-**Test-count ledger:** 36 at baseline (Task 1 Step 1), 36 after both refactor tasks, 40 after Task 8 adds four. Task 9 Step 9 expects 40. Note that Phase 3 Branch 3B cites "36 tests" as the Swift port's conformance checklist — that is the `packages/core` count at the end of Task 2, deliberately excluding the four PWA-only `preferPasswordLogin` tests, which have no Swift equivalent.
+**Test-count ledger** (re-measured against `24e6c2d`): **97** at baseline in 6 files — dates 7, sets 17, validation 25, exercise-search 14, workout-summary 12, swipe-gesture 22. Still 97 after Task 2, now split **75 in `packages/core` + 22 in `apps/web`** (swipe-gesture stays). **101** after Task 8 adds four. Task 9 Step 9 expects 101.
+
+Phase 3 Branch 3B cites 75 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding both the four PWA-only `magicLinkWillStrand` tests and the 22 web-gesture tests, none of which have a Swift equivalent.
 
 **Fork neutrality:** Tasks 1–10 name no native framework. Task 11 is a decision with a written deliverable, not code. Branches 3A and 3B are scope sketches, marked not-executable.
