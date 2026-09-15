@@ -1,6 +1,8 @@
 import "server-only";
 
-import type { ExerciseOption, LastPerformance, SetRecord } from "@/lib/types";
+import { sortByRecency } from "@/lib/exercise-search";
+import type { ExercisePickerOption } from "@/lib/exercise-search";
+import type { LastPerformance, SetRecord } from "@/lib/types";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 type RawSet = {
@@ -21,67 +23,48 @@ function toSetRecord(raw: RawSet): SetRecord {
   };
 }
 
-/** Escapes `%`, `_` and `\` so an `ilike` pattern matches the literal input. */
-function escapeLikePattern(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
+type RawExercise = {
+  id: string;
+  name: string;
+  note: string | null;
+  last_picked_at: string | null;
+};
 
 /**
- * Non-archived exercises matching `query`, most recently used first.
+ * The whole non-archived exercise library, recently used first.
  *
- * Recency is computed in JS rather than SQL: this is a single-user library of
- * tens of rows, and a view or RPC would be more machinery than the ordering is
- * worth. Revisit if the library ever grows past a few hundred exercises.
+ * Returned in full rather than filtered by a search term: the picker holds this
+ * as a prop and narrows it in the browser, so typing costs no request at all.
+ * That is affordable because the library is one user's few dozen exercises —
+ * and because the ordering no longer needs a second query. `last_picked_at` is
+ * maintained by a trigger (see the 20260909000001 migration), replacing the
+ * 200-row `workout_exercises` scan this function used to run on every keystroke
+ * *and* on every saved set, since `addSet` revalidates the workout route.
+ *
+ * Revisit if the library ever grows past a few hundred exercises: at that point
+ * shipping all of them to the client stops being cheaper than searching them.
  */
-export async function searchExercises(query: string): Promise<ExerciseOption[]> {
+export async function listExercises(): Promise<ExercisePickerOption[]> {
   const supabase = await createServerSupabase();
 
-  const trimmed = query.trim();
-
-  let exerciseQuery = supabase
+  const { data, error } = await supabase
     .from("exercises")
-    .select("id, name, note")
+    .select("id, name, note, last_picked_at")
     .eq("is_archived", false);
 
-  if (trimmed.length > 0) {
-    exerciseQuery = exerciseQuery.ilike("name", `%${escapeLikePattern(trimmed)}%`);
+  if (error) {
+    console.error("listExercises: failed to load exercises", error);
   }
+  if (error || !data) return [];
 
-  const [
-    { data: exercises, error: exercisesError },
-    { data: usage, error: usageError },
-  ] = await Promise.all([
-    exerciseQuery.order("name", { ascending: true }),
-    supabase
-      .from("workout_exercises")
-      .select("exercise_id, created_at")
-      .order("created_at", { ascending: false })
-      .limit(200),
-  ]);
-
-  if (exercisesError) {
-    console.error("searchExercises: failed to load exercises", { query }, exercisesError);
-  }
-  if (usageError) {
-    console.error("searchExercises: failed to load exercise usage", { query }, usageError);
-  }
-
-  if (!exercises) return [];
-
-  // First occurrence wins because `usage` is already newest-first.
-  const lastUsedAt = new Map<string, string>();
-  for (const row of usage ?? []) {
-    if (!lastUsedAt.has(row.exercise_id)) lastUsedAt.set(row.exercise_id, row.created_at);
-  }
-
-  return [...exercises].sort((a, b) => {
-    const usedA = lastUsedAt.get(a.id);
-    const usedB = lastUsedAt.get(b.id);
-    if (usedA && usedB) return usedA < usedB ? 1 : -1;
-    if (usedA) return -1;
-    if (usedB) return 1;
-    return a.name.localeCompare(b.name, "de");
-  });
+  return sortByRecency(
+    (data as RawExercise[]).map((raw) => ({
+      id: raw.id,
+      name: raw.name,
+      note: raw.note,
+      lastPickedAt: raw.last_picked_at,
+    }))
+  );
 }
 
 /**
