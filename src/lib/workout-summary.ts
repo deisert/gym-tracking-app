@@ -85,6 +85,7 @@ export function summarizeWorkout(exercises: WorkoutExerciseDetail[]): WorkoutSum
 }
 
 const VOLUME_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
+const TONNES_FORMAT = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 1 });
 
 /** 4320.5 -> "4.320". Whole kilos: a rep more matters, 500 g of rounding does not. */
 export function formatKilos(kg: number): string {
@@ -94,4 +95,16 @@ export function formatKilos(kg: number): string {
 /** 4320.5 -> "4.320 kg", for lines that carry no separate unit label. */
 export function formatVolume(kg: number): string {
   return `${formatKilos(kg)} kg`;
+}
+
+/**
+ * Lifetime totals: kilos below 10.000, tonnes above — "214 t" is a number you
+ * feel, "214.380 kg" one you read twice. One decimal below 100 t, where it
+ * still moves visibly; whole tonnes above.
+ */
+export function formatMovedWeight(kg: number): string {
+  if (kg < 10_000) return formatVolume(kg);
+  const tonnes = kg / 1000;
+  const value = tonnes < 100 ? TONNES_FORMAT.format(tonnes) : VOLUME_FORMAT.format(Math.round(tonnes));
+  return `${value} t`;
 }
