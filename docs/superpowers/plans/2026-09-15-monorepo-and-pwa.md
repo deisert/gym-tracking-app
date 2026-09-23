@@ -21,7 +21,7 @@
 - **UI copy is German.** Match the existing tone in `src/app/login/page.tsx` and `src/components/`.
 - **Theme colour is `#111317`** (the rendered value of `--background: hsl(220 15% 8%)`). Use that literal hex in manifest and viewport metadata.
 - **Node/npm:** npm workspaces requires npm 7+. One lockfile at the repo root only.
-- **Tests must stay green throughout.** The suite is **97 tests in 6 files**, measured against `24e6c2d` on 2026-09-15. A task that reduces that count without deleting a behaviour is a regression.
+- **Tests must stay green throughout.** The suite is **141 tests in 9 files**, measured after the dashboard landed, 2026-09-23. A task that reduces that count without deleting a behaviour is a regression.
 - **`swipe-gesture.ts` stays in `apps/web`.** It has zero imports and is perfectly pure, so it looks like a `packages/core` candidate — but it is *web pointer-event* math (rubber-banding, tap slop, commit thresholds). Gesture handling on either native path is platform-native, so none of it transfers. Purity is not the criterion; portability is.
 - **Read `node_modules/next/dist/docs/` before writing Next-specific code.** This is Next 16; APIs differ from older releases. Relevant guides: `01-app/02-guides/progressive-web-apps.md`, `01-app/02-guides/offline-support.md`, `01-app/03-api-reference/03-file-conventions/01-metadata/manifest.md`.
 
@@ -314,6 +314,14 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 ---
 
 ## Task 2: Extract `packages/core` and rewire the web app's imports
+
+> **Since 2026-09-23 (dashboard phase 1):** `src/lib/dashboard-weeks.ts`,
+> `dashboard-heatmap.ts`, `records.ts` and `src/lib/data/dashboard.ts` stay in
+> `apps/web` — the dashboard is not in the native v1 scope (spec D7). They import
+> `@/lib/dates`, `@/lib/sets`, `@/lib/types` and `@/lib/workout-summary`, which
+> this task moves to `@gymtrack/core`, so the import rewiring must include them.
+> `dates.ts` gained `addDays`/`mondayOf` and `workout-summary.ts` gained
+> `formatMovedWeight`; both move with their modules.
 
 > **Why this is still worth doing with the native fork open.** The original
 > justification was "so the mobile app can import it" — true for React Native,
@@ -1427,7 +1435,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 101 tests passing (97 original + 4 from Task 8), split 79 in `packages/core` and 22 in `apps/web`; typecheck and lint silent.
+Expected: 141 tests passing (measured after dashboard phase 1, 2026-09-23); typecheck and lint silent.
 
 - [ ] **Step 10: Commit**
 
@@ -1613,7 +1621,7 @@ Step 6 in hand before agreeing to either.
 
 **Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
 
-**Test-count ledger** (re-measured against `24e6c2d`): **97** at baseline in 6 files — dates 7, sets 17, validation 25, exercise-search 14, workout-summary 12, swipe-gesture 22. Still 97 after Task 2, now split **75 in `packages/core` + 22 in `apps/web`** (swipe-gesture stays). **101** after Task 8 adds four. Task 9 Step 9 expects 101.
+**Test-count ledger**: **141** tests in 9 files, measured 2026-09-23 after dashboard phase 1 landed. (Previously 97 at Task 1 baseline in 6 files; 75 in `packages/core` + 22 in `apps/web` after Task 2; 101 after Task 8's four PWA tests. Dashboard phase 1 added dashboard modules which stay in `apps/web` per spec D7.)
 
 Phase 3 Branch 3B cites 75 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding both the four PWA-only `magicLinkWillStrand` tests and the 22 web-gesture tests, none of which have a Swift equivalent.
 
