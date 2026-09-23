@@ -33,3 +33,23 @@ export function formatPerformedOn(isoDate: string): string {
   const [, month, day] = isoDate.split("-");
   return `${Number(day)}. ${MONTHS_DE[Number(month) - 1]}`;
 }
+
+/**
+ * "2026-09-23" moved by `days` calendar days. Date-only in, date-only out:
+ * UTC here is not a timezone choice but the absence of one, so no DST switch
+ * can land the result on the wrong day.
+ */
+export function addDays(isoDate: string, days: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * The Monday of the week containing `isoDate` — the same week Postgres'
+ * `date_trunc('week', …)` gives, so app and views bucket identically.
+ */
+export function mondayOf(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // Sunday = 0
+  return addDays(isoDate, -((weekday + 6) % 7));
+}

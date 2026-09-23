@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatKilos, formatVolume, summarizeWorkout } from "@/lib/workout-summary";
+import { formatKilos, formatMovedWeight, formatVolume, summarizeWorkout } from "@/lib/workout-summary";
 import type { SetRecord, WorkoutExerciseDetail } from "@/lib/types";
 
 function set(position: number, weight_kg: number, reps: number, is_warmup = false): SetRecord {
@@ -118,5 +118,22 @@ describe("formatVolume", () => {
 
   it("formats an empty workout as zero", () => {
     expect(formatVolume(0)).toBe("0 kg");
+  });
+});
+
+describe("formatMovedWeight", () => {
+  it("stays in kilos below 10.000", () => {
+    expect(formatMovedWeight(9999)).toBe("9.999 kg");
+    expect(formatMovedWeight(0)).toBe("0 kg");
+  });
+
+  it("switches to tonnes with one decimal from 10.000", () => {
+    expect(formatMovedWeight(10000)).toBe("10 t");
+    expect(formatMovedWeight(12480)).toBe("12,5 t");
+  });
+
+  it("drops the decimal from 100 t", () => {
+    expect(formatMovedWeight(214380)).toBe("214 t");
+    expect(formatMovedWeight(1234567)).toBe("1.235 t");
   });
 });

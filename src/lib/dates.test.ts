@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPerformedOn, localDateString, startOfWeekMonday } from "@/lib/dates";
+import { addDays, formatPerformedOn, localDateString, mondayOf, startOfWeekMonday } from "@/lib/dates";
 
 describe("localDateString", () => {
   it("formats a local date without shifting through UTC", () => {
@@ -34,5 +34,39 @@ describe("formatPerformedOn", () => {
 
   it("strips the leading zero from the day", () => {
     expect(formatPerformedOn("2026-03-05")).toBe("5. Mär");
+  });
+});
+
+describe("addDays", () => {
+  it("moves forward and backward across month and year boundaries", () => {
+    expect(addDays("2026-09-23", 1)).toBe("2026-09-24");
+    expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+    expect(addDays("2027-01-01", -1)).toBe("2026-12-31");
+  });
+
+  it("is not shifted by the daylight-saving switch", () => {
+    expect(addDays("2026-03-29", 1)).toBe("2026-03-30"); // EU clocks go forward on 29 Mar
+    expect(addDays("2026-10-25", 1)).toBe("2026-10-26"); // and back on 25 Oct
+  });
+
+  it("spans whole weeks", () => {
+    expect(addDays("2026-09-21", -77)).toBe("2026-07-06");
+  });
+});
+
+describe("mondayOf", () => {
+  it("keeps a Monday and walks back from any other day", () => {
+    expect(mondayOf("2026-09-21")).toBe("2026-09-21"); // Monday
+    expect(mondayOf("2026-09-23")).toBe("2026-09-21"); // Wednesday
+    expect(mondayOf("2026-08-23")).toBe("2026-08-17"); // Sunday
+    expect(mondayOf("2026-09-02")).toBe("2026-08-31"); // across a month
+  });
+
+  it("agrees with startOfWeekMonday for every day of a month", () => {
+    for (let day = 1; day <= 31; day++) {
+      const iso = `2026-08-${String(day).padStart(2, "0")}`;
+      expect(mondayOf(iso)).toBe(startOfWeekMonday(new Date(2026, 7, day)));
+    }
   });
 });
