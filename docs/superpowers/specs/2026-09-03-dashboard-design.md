@@ -1,7 +1,8 @@
 # Dashboard tab — what it shows, in what order, and when
 
 **Date:** 2026-09-03
-**Status:** decided 2026-09-03 (see §9); implementation plan in
+**Status:** decided 2026-09-03 (see §9), refined 2026-09-23 (see §10 — it wins where the two
+differ); implementation plan in
 `docs/superpowers/plans/2026-09-03-dashboard-phase-1.md`
 **Companions:** `CONCEPT.md` §2.9 / §6.5, `DESIGN_SYSTEM.md` §4 (navigation), `FEATURE_BACKLOG.md`,
 `docs/superpowers/specs/2026-09-03-total-volume-evaluation.md` (where the aggregation belongs)
@@ -197,3 +198,33 @@ user present. A stored `total_volume_kg` column stays out until a query is measu
    lives.)
 7. **Records window:** last 30 days. "Since you last looked" is the better moment but needs
    a stored timestamp that does not exist yet.
+
+## 10. Decisions — Dominik, 2026-09-23
+
+Taken while turning §9 into an executable plan. Where these differ from §2 or §9, these win.
+
+1. **Build order: dashboard before the monorepo move.** The dashboard needs no manual Vercel
+   change and is not in the native v1 scope (`2026-09-15-mobile-strategy.md` D7), so its
+   modules stay web-only. The monorepo plan gets a note so its import rewiring covers them.
+2. **No week-over-week delta on „Diese Woche“.** Training is irregular right now; a comparison
+   with last week would mostly report the gaps. The tiles show this week's numbers only.
+   Supersedes the delta in §2.1.
+3. **Wiederholungs-PR:** strictly more reps than any earlier working set at *exactly* the
+   same weight. The first session at a weight is not a record.
+4. **Strictly greater, everywhere.** Matching an old best is not a new one. Bodyweight sets
+   (0 kg) can only ever produce a Wiederholungs-PR — 0 never beats 0.
+5. **One line per exercise in „Neue Rekorde“:** its newest record; when one session set
+   several, the strongest claim wins (Gewicht → e1RM → Wiederholungen).
+6. **„Deine Übungen“:** top 5 by sessions in the last 12 weeks, each with its all-time best
+   working set (highest e1RM, then heaviest, then most reps). **Plain rows, no links**, until
+   the exercise detail page ships in phase 2 — a link to a missing route is a 404 in
+   production. Supersedes §2.5's "build them as links from the start".
+7. **A workout without a single set is not a trained workout** — not in the week tiles, the
+   streak, the average or the totals. Verlauf keeps counting every workout, so the two counters
+   can differ by an abandoned session. *(Claude's default, open to veto.)*
+8. **The streak block is titled „Rhythmus“** and always shows the Ø line; the streak itself
+   appears only at ≥ 2 consecutive weeks. With irregular training a „0 Wochen in Folge“ reads
+   as failure, which §2.2's tone rule forbids. *(Claude's default, open to veto.)*
+9. **One Supabase project, no staging instance.** The migration reaches the production
+   database the moment it is applied for staging. It only adds views and functions, so that is
+   safe — but it must stay additive.
