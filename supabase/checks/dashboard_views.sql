@@ -17,6 +17,7 @@ declare
   ex_bench uuid;
   ex_pullup uuid;
   ex_new uuid;
+  ex_old uuid;
   w1 uuid;
   w2 uuid;
   w3 uuid;
@@ -32,6 +33,7 @@ begin
   insert into exercises (user_id, name) values (me, 'zz_check_bench') returning id into ex_bench;
   insert into exercises (user_id, name) values (me, 'zz_check_pullup') returning id into ex_pullup;
   insert into exercises (user_id, name) values (me, 'zz_check_new') returning id into ex_new;
+  insert into exercises (user_id, name) values (me, 'zz_check_old') returning id into ex_old;
 
   insert into workouts (user_id, performed_on) values (me, '2001-01-03') returning id into w1;      -- Wed
   insert into workouts (user_id, performed_on) values (me, '2001-02-07') returning id into w2;      -- Wed
@@ -44,6 +46,8 @@ begin
     values (we, 0, 100, 1, true), (we, 1, 80, 5, false), (we, 2, 80, 5, false);
   insert into workout_exercises (workout_id, exercise_id) values (w1, ex_pullup) returning id into we;
   insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 0, 8);
+  insert into workout_exercises (workout_id, exercise_id) values (w1, ex_old) returning id into we;
+  insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 60, 10);
 
   -- W2. Bench: weight PR (85 > 80). Pull-up: reps PR at 0 kg (10 > 8).
   insert into workout_exercises (workout_id, exercise_id) values (w2, ex_bench) returning id into we;
@@ -53,20 +57,23 @@ begin
 
   -- W3. Bench: ties 85 (no record), beats e1RM and reps at 80 kg.
   --     Pull-up: ties 10 (no record). New exercise: first session (no record).
+  --     Old exercise: lighter than its W1 best (no record).
   insert into workout_exercises (workout_id, exercise_id) values (w3, ex_bench) returning id into we;
   insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 85, 3), (we, 1, 80, 10);
   insert into workout_exercises (workout_id, exercise_id) values (w3, ex_pullup) returning id into we;
   insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 0, 10);
   insert into workout_exercises (workout_id, exercise_id) values (w3, ex_new) returning id into we;
   insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 50, 5);
+  insert into workout_exercises (workout_id, exercise_id) values (w3, ex_old) returning id into we;
+  insert into sets (workout_exercise_id, position, weight_kg, reps) values (we, 0, 50, 5);
 
   -- w_empty: started, never trained — an exercise, no set.
   insert into workout_exercises (workout_id, exercise_id) values (w_empty, ex_bench);
 
-  -- v_workout_stats: warm-ups count toward volume. 100×1 + 2×80×5 + 0×8 = 900.
+  -- v_workout_stats: warm-ups count toward volume. 100×1 + 2×80×5 + 0×8 + 60×10 = 1500.
   select set_count, volume_kg into r from v_workout_stats where workout_id = w1;
-  if r.set_count is distinct from 4::bigint or r.volume_kg is distinct from 900::numeric then
-    raise exception 'FAIL v_workout_stats w1: % sets, % kg (want 4, 900)', r.set_count, r.volume_kg;
+  if r.set_count is distinct from 5::bigint or r.volume_kg is distinct from 1500::numeric then
+    raise exception 'FAIL v_workout_stats w1: % sets, % kg (want 5, 1500)', r.set_count, r.volume_kg;
   end if;
   select set_count, volume_kg into r from v_workout_stats where workout_id = w_empty;
   if r.set_count is distinct from 0::bigint or r.volume_kg is distinct from 0::numeric then
@@ -74,11 +81,11 @@ begin
   end if;
 
   -- v_weekly_stats: week of Mon 12 Feb holds w3 (trained) and w_empty (not).
-  -- 85×3 + 80×10 + 0×10 + 50×5 = 255 + 800 + 0 + 250 = 1305.
+  -- 85×3 + 80×10 + 0×10 + 50×5 + 50×5 = 255 + 800 + 0 + 250 + 250 = 1555.
   select workout_count, set_count, volume_kg into r from v_weekly_stats where week_start = '2001-02-12';
-  if r.workout_count is distinct from 1::bigint or r.set_count is distinct from 4::numeric
-     or r.volume_kg is distinct from 1305::numeric then
-    raise exception 'FAIL v_weekly_stats 2001-02-12: % workouts, % sets, % kg (want 1, 4, 1305)',
+  if r.workout_count is distinct from 1::bigint or r.set_count is distinct from 5::numeric
+     or r.volume_kg is distinct from 1555::numeric then
+    raise exception 'FAIL v_weekly_stats 2001-02-12: % workouts, % sets, % kg (want 1, 5, 1555)',
       r.workout_count, r.set_count, r.volume_kg;
   end if;
   select count(*) into n from v_weekly_stats where week_start = '2001-01-01';
@@ -129,6 +136,15 @@ begin
      or r.best_performed_on is distinct from '2001-02-14'::date then
     raise exception 'FAIL top_exercises pull-up: best % × % on % (want 0 × 10, 2001-02-14)',
       r.best_weight_kg, r.best_reps, r.best_performed_on;
+  end if;
+
+  -- The window only decides WHICH exercises are frequent; the best set stays all-time.
+  -- From 10 Feb, zz_check_old has one session (50×5), but its best is W1's 60×10.
+  select * into r from top_exercises('2001-02-10', 1000) where exercise_id = ex_old;
+  if r.session_count is distinct from 1::bigint or r.best_weight_kg is distinct from 60::numeric
+     or r.best_reps is distinct from 10 or r.best_performed_on is distinct from '2001-01-03'::date then
+    raise exception 'FAIL top_exercises all-time best: % sessions, best % × % on % (want 1, 60 × 10, 2001-01-03)',
+      r.session_count, r.best_weight_kg, r.best_reps, r.best_performed_on;
   end if;
 
   -- Tenancy: a different authenticated user sees nothing through anything.
