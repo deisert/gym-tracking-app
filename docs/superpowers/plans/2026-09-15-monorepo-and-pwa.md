@@ -4,7 +4,7 @@
 
 **Goal:** Restructure the repo as an npm-workspaces monorepo with a shared `@gymtrack/core` package, then turn the existing Next.js web app into an installable, connectivity-resilient PWA that lives on an iPhone 15 Pro home screen.
 
-**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 75 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
+**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 83 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
 
 **Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 2 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
 
@@ -21,7 +21,7 @@
 - **UI copy is German.** Match the existing tone in `src/app/login/page.tsx` and `src/components/`.
 - **Theme colour is `#111317`** (the rendered value of `--background: hsl(220 15% 8%)`). Use that literal hex in manifest and viewport metadata.
 - **Node/npm:** npm workspaces requires npm 7+. One lockfile at the repo root only.
-- **Tests must stay green throughout.** The suite is **97 tests in 6 files**, measured against `24e6c2d` on 2026-09-15. A task that reduces that count without deleting a behaviour is a regression.
+- **Tests must stay green throughout.** The suite is **141 tests in 9 files**, measured after the dashboard landed, 2026-09-23. A task that reduces that count without deleting a behaviour is a regression.
 - **`swipe-gesture.ts` stays in `apps/web`.** It has zero imports and is perfectly pure, so it looks like a `packages/core` candidate — but it is *web pointer-event* math (rubber-banding, tap slop, commit thresholds). Gesture handling on either native path is platform-native, so none of it transfers. Purity is not the criterion; portability is.
 - **Read `node_modules/next/dist/docs/` before writing Next-specific code.** This is Next 16; APIs differ from older releases. Relevant guides: `01-app/02-guides/progressive-web-apps.md`, `01-app/02-guides/offline-support.md`, `01-app/03-api-reference/03-file-conventions/01-metadata/manifest.md`.
 
@@ -146,7 +146,7 @@ gym-tracking-app/
     src/index.ts                barrel re-export
     src/{types,validation,sets,dates,exercise-search,workout-summary}.ts
     src/{validation,sets,dates,exercise-search,workout-summary}.test.ts
-                                75 of the 97 tests; swipe-gesture stays in apps/web
+                                83 of the 141 tests; swipe-gesture and the dashboard tests stay in apps/web
   supabase/                     unchanged, stays at root
   docs/                         unchanged, stays at root
 ```
@@ -209,7 +209,7 @@ npm test 2>&1 | tail -5
 npx tsc --noEmit && echo "TSC CLEAN"
 ```
 
-Expected: vitest reports `Tests  97 passed (97)` across 6 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
+Expected: vitest reports `Tests  141 passed (141)` across 9 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
 
 - [ ] **Step 2: Move the app**
 
@@ -298,7 +298,7 @@ npm run typecheck
 npm run build 2>&1 | tail -20
 ```
 
-Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 97 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
+Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 141 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
 
 - [ ] **Step 7: Verify the dev server still runs through the launch config**
 
@@ -315,6 +315,14 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 
 ## Task 2: Extract `packages/core` and rewire the web app's imports
 
+> **Since 2026-09-23 (dashboard phase 1):** `src/lib/dashboard-weeks.ts`,
+> `dashboard-heatmap.ts`, `records.ts` and `src/lib/data/dashboard.ts` stay in
+> `apps/web` — the dashboard is not in the native v1 scope (spec D7). They import
+> `@/lib/dates`, `@/lib/sets`, `@/lib/types` and `@/lib/workout-summary`, which
+> this task moves to `@gymtrack/core`, so the import rewiring must include them.
+> `dates.ts` gained `addDays`/`mondayOf` and `workout-summary.ts` gained
+> `formatMovedWeight`; both move with their modules.
+
 > **Why this is still worth doing with the native fork open.** The original
 > justification was "so the mobile app can import it" — true for React Native,
 > **void for Swift**, which cannot import a TypeScript package. The decision
@@ -323,13 +331,13 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > 1. **Asymmetric cost.** Doing this now and later choosing Swift wastes about an
 >    hour of directory structure. *Not* doing it and later choosing React Native
 >    means migrating a shared package out from under a running second app.
-> 2. **It is right for the web app alone.** The 75 moved tests run in milliseconds
+> 2. **It is right for the web app alone.** The 83 moved tests run in milliseconds
 >    without booting Next, and the business rules live in one auditable place.
 >
 > On the Swift branch `packages/core` becomes an *executable specification*
 > rather than a dependency: the Epley formula, ghost-value index mapping, German
 > decimal formatting, Europe/Berlin date handling and validation bounds stated
-> once, with 75 tests that become the conformance checklist for a Swift port.
+> once, with 83 tests that become the conformance checklist for a Swift port.
 > That is real, and weaker than direct reuse. Execute this task either way.
 
 **Files:**
@@ -480,7 +488,7 @@ export * from "./workout-summary";
 npm test --workspace packages/core 2>&1 | tail -5
 ```
 
-Expected: PASS, `Tests  75 passed (75)` — dates 7, sets 17, validation 25, exercise-search 14, workout-summary 12. The remaining 22 are `swipe-gesture.test.ts`, which stays in `apps/web`. If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
+Expected: PASS, `Tests  83 passed (83)` — dates 12, sets 17, validation 25, exercise-search 14, workout-summary 15. The remaining 58 are in `apps/web` (swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7). If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
 
 - [ ] **Step 8: Point the web app at the package**
 
@@ -559,7 +567,7 @@ npm run lint
 npm run build 2>&1 | tail -20
 ```
 
-Expected: 97 tests still pass, now split 75 in `packages/core` and 22 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
+Expected: 141 tests still pass, now split 83 in `packages/core` and 58 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
 
 - [ ] **Step 12: Verify at runtime, not just at build time**
 
@@ -1033,7 +1041,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 97 tests still passing, typecheck and lint silent.
+Expected: 141 tests still passing, typecheck and lint silent.
 
 - [ ] **Step 9: Commit**
 
@@ -1146,7 +1154,7 @@ export function magicLinkWillStrand(env: DisplayEnvironment): boolean {
 npm test --workspace packages/core 2>&1 | tail -10
 ```
 
-Expected: PASS, `Tests  79 passed (79)` — the 75 from Task 2 plus these four.
+Expected: PASS, `Tests  87 passed (87)` — the 83 from Task 2 plus these four.
 
 - [ ] **Step 5: Export it from the barrel**
 
@@ -1427,7 +1435,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 101 tests passing (97 original + 4 from Task 8), split 79 in `packages/core` and 22 in `apps/web`; typecheck and lint silent.
+Expected: 145 tests passing (141 after dashboard phase 1 + 4 from Task 8), split 87 in `packages/core` and 58 in `apps/web`; typecheck and lint silent.
 
 - [ ] **Step 10: Commit**
 
@@ -1590,7 +1598,7 @@ native client talks to Supabase directly rather than through a re-exposed API.
 2. `supabase-swift` via Swift Package Manager: auth with the Keychain as the
    session store, PostgREST for queries, and the same deep-link scheme added to
    Supabase Auth's redirect allow list.
-3. **Port `packages/core` to Swift, using its 75 tests as the conformance
+3. **Port `packages/core` to Swift, using its 83 tests as the conformance
    checklist.** This is the concrete cost of this branch over 3A. Budget for the
    parts that are easy to get subtly wrong: the Europe/Berlin date handling
    (`localDateString` deliberately avoids `toISOString`, which is UTC), the
@@ -1613,8 +1621,8 @@ Step 6 in hand before agreeing to either.
 
 **Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
 
-**Test-count ledger** (re-measured against `24e6c2d`): **97** at baseline in 6 files — dates 7, sets 17, validation 25, exercise-search 14, workout-summary 12, swipe-gesture 22. Still 97 after Task 2, now split **75 in `packages/core` + 22 in `apps/web`** (swipe-gesture stays). **101** after Task 8 adds four. Task 9 Step 9 expects 101.
+**Test-count ledger** (re-measured 2026-09-23, after dashboard phase 1): **141** at baseline in 9 files — dates 12, sets 17, validation 25, exercise-search 14, workout-summary 15, swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7. Still 141 after Task 2, now split **83 in `packages/core` + 58 in `apps/web`** (swipe-gesture and the dashboard modules stay). **145** after Task 8 adds four. Task 9 Step 9 expects 145.
 
-Phase 3 Branch 3B cites 75 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding both the four PWA-only `magicLinkWillStrand` tests and the 22 web-gesture tests, none of which have a Swift equivalent.
+Phase 3 Branch 3B cites 83 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding both the four PWA-only `magicLinkWillStrand` tests and the 58 web-gesture and dashboard tests, none of which have a Swift equivalent.
 
 **Fork neutrality:** Tasks 1–10 name no native framework. Task 11 is a decision with a written deliverable, not code. Branches 3A and 3B are scope sketches, marked not-executable.
