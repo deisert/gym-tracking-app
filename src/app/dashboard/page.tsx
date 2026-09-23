@@ -57,10 +57,17 @@ export default async function DashboardPage() {
         {weeks ? <StatTiles week={thisWeek(weeks, today)} /> : <BlockError />}
       </DashboardSection>
 
-      {weeks && average && average.weekCount >= MIN_WEEKS_FOR_RHYTHM && (
+      {weeks === null ? (
         <DashboardSection title="Rhythmus">
-          <StreakLine streak={currentStreak(weeks, today)} average={average} />
+          <BlockError />
         </DashboardSection>
+      ) : (
+        average &&
+        average.weekCount >= MIN_WEEKS_FOR_RHYTHM && (
+          <DashboardSection title="Rhythmus">
+            <StreakLine streak={currentStreak(weeks, today)} average={average} />
+          </DashboardSection>
+        )
       )}
 
       <DashboardSection title={`Letzte ${HEATMAP_WEEKS} Wochen`}>
@@ -71,14 +78,17 @@ export default async function DashboardPage() {
         {records ? (
           <RecordsList
             records={pickRecords(records)}
-            hasHistory={(totals?.workoutCount ?? 0) >= 2}
+            // "kein neuer Bestwert" is true whatever the history; the
+            // onboarding line is only shown when we know it applies.
+            hasHistory={totals === null || totals.workoutCount >= 2}
           />
         ) : (
           <BlockError />
         )}
       </DashboardSection>
 
-      {totals && totals.workoutCount >= MIN_WORKOUTS_FOR_EXERCISES && (
+      {/* With the workout count unknown, show the block rather than hide loaded data. */}
+      {(totals === null || totals.workoutCount >= MIN_WORKOUTS_FOR_EXERCISES) && (
         <DashboardSection title="Deine Übungen">
           {exercises ? <ExerciseList exercises={exercises} /> : <BlockError />}
         </DashboardSection>
