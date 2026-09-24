@@ -15,6 +15,8 @@ type RawSet = {
   weight_kg: number | string;
   reps: number;
   is_warmup: boolean;
+  unclean_reps: number;
+  is_dropset: boolean;
 };
 
 type RawWorkoutExercise = {
@@ -40,6 +42,8 @@ function toSetRecord(raw: RawSet): SetRecord {
     weight_kg: Number(raw.weight_kg),
     reps: raw.reps,
     is_warmup: raw.is_warmup,
+    unclean_reps: raw.unclean_reps,
+    is_dropset: raw.is_dropset,
   };
 }
 
@@ -53,7 +57,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
        workout_exercises (
          id, position, note,
          exercises ( id, name ),
-         sets ( id, position, weight_kg, reps, is_warmup )
+         sets ( id, position, weight_kg, reps, is_warmup, unclean_reps, is_dropset )
        )`
     )
     .eq("id", workoutId)
