@@ -26,6 +26,9 @@ next-env.d.ts
 # vercel
 .vercel
 
+# personal training log — private, never commit
+past-sets.md
+
 # supabase local artifacts
 supabase/.branches
 supabase/.temp
