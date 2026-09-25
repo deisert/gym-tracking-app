@@ -1,8 +1,10 @@
 # Notes-file import — backfilling two years of training history
 
 **Date:** 2026-09-24
-**Status:** decided 2026-09-24 in conversation; implementation plan to follow in
-`docs/superpowers/plans/2026-09-24-notes-import.md`
+**Status:** implemented 2026-09-25 (plan: `docs/superpowers/plans/2026-09-24-notes-import.md`;
+the owner's preview review reversed the per-side halving — weights are stored as written).
+Migration `20260924200000` applied and recorded; import run on 2026-09-25: 149 workouts,
+823 exercise entries, 2,224 sets, 25 new exercises — verified by md5 over every row.
 **Companions:** `CONCEPT.md` §2.5–2.6 (variation attributes), `FEATURE_BACKLOG.md` #2
 (notes-file import), `supabase/migrations/20260915203912_exercise_last_picked_at.sql`
 
