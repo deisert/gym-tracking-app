@@ -22,7 +22,10 @@ export type Resolved = {
   attributes: Record<string, string>;
 };
 
-/** From here on the pulldown and row towers are a different machine (77/87 kg stack). */
+/**
+ * From here on the pulldown and row towers are different machines: pulldowns
+ * ≥ 70 kg → "Lat pulldown tower", below → "Lat Pulldown (neue Maschine)".
+ */
 const NEW_TOWER_FROM = "2026-06-01";
 
 export function isBodyweightHeader(header: string): boolean {
@@ -113,11 +116,12 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
   }
 
   if (/pull ?-?down|pulldown|lap pull/.test(t)) {
+    // "lateral" means single-arm (owner, 2026-09-24). A uni/single/lateral TOWER pulldown is
+    // single-arm on the tower stack even when "each side" is also noted, and even at a light,
+    // tricep-range weight — that check wins over the tricep-stack check below.
+    if (/tower/.test(t) && /single|uni|lateral/.test(t)) return plain("Lat Pulldown", { grip: "lateral" });
     // Tricep-stack weights: these were pushdowns written down as pulldowns.
     if (w < 35) return /rope/.test(t) ? plain("Tri pushdown rope") : plain("Tri pushdown tower", tricepGripOf(t));
-    // "lateral" means single-arm (owner, 2026-09-24). A uni/single/lateral TOWER pulldown is
-    // single-arm on the tower stack even when "each side" is also noted — that check wins.
-    if (/tower/.test(t) && /single|uni|lateral/.test(t)) return plain("Lat Pulldown", { grip: "lateral" });
     if (/machine|front|high to low/.test(t) || ctx.perSideNoted) return plain("Lat pulldown machine");
     if (newTower) {
       return w >= 70 ? plain("Lat pulldown tower", gripOf(t)) : plain("Lat Pulldown (neue Maschine)", gripOf(t));

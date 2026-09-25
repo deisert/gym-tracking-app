@@ -41,7 +41,6 @@ export function buildExercise(raw: RawExercise, performedOn: string): ImportExer
     name: resolved.name,
     attributes: resolved.attributes,
     note: parts.length > 0 ? parts.join(" · ") : null,
-    flags: [],
     sets,
   };
 }

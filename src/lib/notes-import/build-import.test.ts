@@ -21,7 +21,7 @@ const LOG = [
   "75/10 dropset",
   "———",
   "25.09",
-  "Mit Zoffi",
+  "Mit Freund",
 ].join("\n");
 
 describe("buildImport", () => {
@@ -40,14 +40,13 @@ describe("buildImport", () => {
   });
 
   it("keeps per-side weights exactly as written (no halving or conversion)", () => {
-    const [named, assumed] = result.workouts[0].exercises;
-    expect(named).toMatchObject({ name: "Incline bench machine", flags: [] });
-    expect(named.sets.map((s) => s.weightKg)).toEqual([60, 60]);
+    const [explicitPerSide, plainWeights] = result.workouts[0].exercises;
+    expect(explicitPerSide).toMatchObject({ name: "Incline bench machine" });
+    expect(explicitPerSide.sets.map((s) => s.weightKg)).toEqual([60, 60]);
     // "60/10 (30 each)" names an explicit per-side number, so no per-side note.
-    expect(named.note).toBeNull();
-    expect(assumed).toMatchObject({ flags: [] });
-    expect(assumed.sets.map((s) => s.weightKg)).toEqual([60, 50]);
-    expect(assumed.note).toBeNull();
+    expect(explicitPerSide.note).toBeNull();
+    expect(plainWeights.sets.map((s) => s.weightKg)).toEqual([60, 50]);
+    expect(plainWeights.note).toBeNull();
   });
 
   it("notes 'Gewicht pro Seite' only when 'each side' is said without an explicit per-side number", () => {

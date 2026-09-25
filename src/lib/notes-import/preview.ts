@@ -68,14 +68,6 @@ export function renderPreview(input: {
     )
     .join("");
 
-  const flaggedRows = pairs
-    .filter(({ exercise }) => exercise.flags.length > 0)
-    .map(
-      ({ workout, exercise }) =>
-        `<tr><td>${workout.performedOn}</td><td>${esc(exercise.name)}</td><td>${esc(exercise.rawHeader)} (Z. ${exercise.line})</td><td>${esc(exercise.flags.join(", "))}</td><td>${exercise.sets.map(formatImportSet).join(" · ")}</td></tr>`
-    )
-    .join("");
-
   const estimatedRows = result.workouts
     .filter((workout) => workout.dateEstimated)
     .map((workout) => `<li>${workout.performedOn} (Z. ${workout.line})</li>`)
@@ -118,8 +110,6 @@ export function renderPreview(input: {
 <p><b>${result.workouts.length}</b> Workouts · <b>${pairs.length}</b> Übungseinträge · <b>${setCount}</b> Sätze · <b>${byName.size}</b> Übungen · ${first} bis ${last}</p>
 <h2>Übungen</h2>
 <table><tr><th>Übung</th><th>Einheiten</th><th>Gewichte</th><th>Rohnamen</th></tr>${exerciseRows}</table>
-<h2>Bitte prüfen: umgerechnete Gewichte</h2>
-<table><tr><th>Datum</th><th>Übung</th><th>Roh</th><th>Markierung</th><th>Sätze</th></tr>${flaggedRows}</table>
 <h2>Geschätzte Daten</h2><ul>${estimatedRows}</ul>
 <h2>Korrekturen (overrides.ts)</h2>
 <table><tr><th>Zeile</th><th>Original</th><th>Wird zu</th></tr>${overrideRows}</table>

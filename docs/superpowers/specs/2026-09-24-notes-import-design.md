@@ -109,7 +109,6 @@ stores 25 — the number after the slash, unchanged.
 - The exercise note gets „Gewicht pro Seite" only when a set says `each side` **and** no set
   in that exercise also names an explicit per-side number; if a set names the number (`42.5
   each side`), that already makes it explicit and no note is added.
-- `ImportExercise.flags` stays in the type (the preview renders it) but is always empty now.
 
 ### 5.4 Overrides
 Typos and one-off shapes (`408` → 40/8, `5010`, `87/5/7_3`, `40//10`, `22.5:8`, reversed

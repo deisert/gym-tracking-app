@@ -101,6 +101,14 @@ describe("resolveExercise", () => {
       name: "Tri pushdown tower",
       attributes: { grip: "triangle" },
     });
+    expect(resolve("Lat pulldown", 30)).toMatchObject({ name: "Tri pushdown tower" });
+  });
+
+  it("keeps a uni/single/lateral TOWER pulldown lateral even at a tricep-range weight", () => {
+    expect(resolve("Tower pull-down single grip", 30)).toMatchObject({
+      name: "Lat Pulldown",
+      attributes: { grip: "lateral" },
+    });
   });
 
   it("gives the 2026 pulldown machine its own exercise, split by weight", () => {
@@ -109,6 +117,11 @@ describe("resolveExercise", () => {
       "Lat Pulldown (neue Maschine)"
     );
     expect(resolve("Lat pulldown tower", 90, { date: "2025-11-04" })?.name).toBe("Lat Pulldown");
+  });
+
+  it("pins the 70 kg boundary for the 2026 tower split", () => {
+    expect(resolve("Lat pulldown tower", 70, { date: "2026-07-01" })?.name).toBe("Lat pulldown tower");
+    expect(resolve("Lat pulldown tower", 69.5, { date: "2026-07-01" })?.name).toBe("Lat Pulldown (neue Maschine)");
   });
 
   it("maps grips to attributes", () => {
@@ -137,7 +150,7 @@ describe("resolveExercise", () => {
   });
 
   it("returns null for text it does not know", () => {
-    expect(resolve("Mit Zoffi", 0)).toBeNull();
+    expect(resolve("Mit Freund", 0)).toBeNull();
   });
 });
 

@@ -112,7 +112,7 @@ describe("parseSetLine", () => {
     expect(parseSetLine("22.5")).toEqual({ kind: "bare", value: 22.5 });
   });
 
-  it.each(["Row machine", "3 absetzen", "1 1/2 Wochen krank"])("does not read %s", (line) => {
+  it.each(["Row machine", "3 absetzen", "1 1/2 Wochen Pause"])("does not read %s", (line) => {
     expect(parseSetLine(line).kind).toBe("none");
   });
 });

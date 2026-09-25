@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { emitImportSql, emitRollbackSql } from "@/lib/notes-import/emit-sql";
 import type { ImportWorkout } from "@/lib/notes-import/types";
 
-const USER = "4458ae8e-cf70-4ba5-8416-e9e7983cf181";
+const USER = "00000000-0000-4000-8000-000000000001";
 
 const workouts: ImportWorkout[] = [
   {
@@ -18,7 +18,6 @@ const workouts: ImportWorkout[] = [
         name: "Incline bench press barbell",
         attributes: {},
         note: null,
-        flags: [],
         sets: [{ weightKg: 50, reps: 9, uncleanReps: 0, isWarmup: false, isDropset: false }],
       },
       {
@@ -27,7 +26,6 @@ const workouts: ImportWorkout[] = [
         name: "Lat Pulldown",
         attributes: { grip: "wide" },
         note: null,
-        flags: [],
         sets: [{ weightKg: 80, reps: 8, uncleanReps: 2, isWarmup: false, isDropset: true }],
       },
     ],

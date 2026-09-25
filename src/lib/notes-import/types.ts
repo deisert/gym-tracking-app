@@ -5,7 +5,7 @@ export type Side = "L" | "R";
 
 export type DayMonth = { day: number; month: number; year: number | null };
 
-/** One set line, before exercise-level rules (per-side, halving) apply. */
+/** One set line, before exercise-level rules (per-side) apply. */
 export type RawSet = {
   line: number;
   weightKg: number;
@@ -72,8 +72,6 @@ export type ImportExercise = {
   name: string;
   attributes: Record<string, string>;
   note: string | null;
-  /** Review markers for the preview: "halbiert", "umgerechnet". */
-  flags: string[];
   sets: ImportSet[];
 };
 

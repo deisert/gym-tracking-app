@@ -139,7 +139,7 @@ function parseBlock(block: Block, fates: LineFate[]): RawWorkout {
 
     const parsed = parseAnySet(text, current);
     if (parsed.kind !== "none") {
-      // Before any exercise, a set-shaped line is a remark ("3/10 verkatert").
+      // Before any exercise, a set-shaped line is a remark ("3/10 müde").
       if (!current) workoutNote(v.line, text);
       else if (parsed.kind === "set") {
         current.sets.push({ line: v.line, ...parsed.set });
