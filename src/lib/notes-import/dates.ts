@@ -20,6 +20,18 @@ function iso(year: number, month: number, day: number): string {
 }
 
 /**
+ * Verify that a calendar date is real (e.g., not 31 April or 29 Feb in a non-leap year).
+ * Throws if the date is impossible.
+ */
+function validateCalendarDate(year: number, month: number, day: number): void {
+  const dateUtc = Date.UTC(year, month - 1, day);
+  const d = new Date(dateUtc);
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() + 1 !== month || d.getUTCDate() !== day) {
+    throw new Error(`Impossible date ${day}.${month}.${year}`);
+  }
+}
+
+/**
  * The log never writes a year. It runs forward in time, so the year goes up
  * exactly when the month jumps back by more than half a year (Dec → Jan).
  * A small step back (17.01 then 16.01) is a late entry, not a new year.
@@ -32,6 +44,7 @@ export function assignYears(dates: (DayMonth | null)[], startYear: number): (str
     if (date.year !== null) year = date.year;
     else if (lastMonth !== null && date.month < lastMonth - 6) year += 1;
     lastMonth = date.month;
+    validateCalendarDate(year, date.month, date.day);
     return iso(year, date.month, date.day);
   });
 }

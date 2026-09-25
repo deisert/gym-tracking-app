@@ -47,6 +47,18 @@ describe("assignYears", () => {
   it("passes undated entries through", () => {
     expect(assignYears([dm(1, 3), null, dm(5, 3)], 2025)).toEqual(["2025-03-01", null, "2025-03-05"]);
   });
+
+  it("throws for impossible dates (e.g. 31st of April)", () => {
+    expect(() => assignYears([dm(31, 4, null)], 2025)).toThrow(/Impossible date/);
+  });
+
+  it("accepts 29 Feb in a leap year", () => {
+    expect(assignYears([dm(29, 2, null)], 2024)).toEqual(["2024-02-29"]);
+  });
+
+  it("throws for 29 Feb in a non-leap year", () => {
+    expect(() => assignYears([dm(29, 2, null)], 2025)).toThrow(/Impossible date/);
+  });
 });
 
 describe("fillMissingDates", () => {
