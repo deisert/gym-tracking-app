@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatSetExtras,
   formatSetSummary,
   formatWeight,
   ghostForPosition,
@@ -93,6 +94,24 @@ describe("nextPosition", () => {
 
   it("continues after the highest existing position", () => {
     expect(nextPosition([{ position: 0 }, { position: 2 }])).toBe(3);
+  });
+});
+
+describe("formatSetExtras", () => {
+  it("is null for a plain set", () => {
+    expect(formatSetExtras({ unclean_reps: 0, is_dropset: false })).toBeNull();
+  });
+
+  it("names unclean reps", () => {
+    expect(formatSetExtras({ unclean_reps: 3, is_dropset: false })).toBe("+3 unsauber");
+  });
+
+  it("names a dropset", () => {
+    expect(formatSetExtras({ unclean_reps: 0, is_dropset: true })).toBe("Dropset");
+  });
+
+  it("joins both", () => {
+    expect(formatSetExtras({ unclean_reps: 2, is_dropset: true })).toBe("+2 unsauber · Dropset");
   });
 });
 
