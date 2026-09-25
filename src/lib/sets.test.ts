@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatSetExtras,
   formatSetSummary,
   formatWeight,
   ghostForPosition,
@@ -9,7 +10,7 @@ import {
 import type { LastPerformance, SetRecord } from "@/lib/types";
 
 function set(position: number, weight_kg: number, reps: number, is_warmup = false): SetRecord {
-  return { id: `s${position}`, position, weight_kg, reps, is_warmup };
+  return { id: `s${position}`, position, weight_kg, reps, is_warmup, unclean_reps: 0, is_dropset: false };
 }
 
 const lastSession: LastPerformance = {
@@ -93,6 +94,24 @@ describe("nextPosition", () => {
 
   it("continues after the highest existing position", () => {
     expect(nextPosition([{ position: 0 }, { position: 2 }])).toBe(3);
+  });
+});
+
+describe("formatSetExtras", () => {
+  it("is null for a plain set", () => {
+    expect(formatSetExtras({ unclean_reps: 0, is_dropset: false })).toBeNull();
+  });
+
+  it("names unclean reps", () => {
+    expect(formatSetExtras({ unclean_reps: 3, is_dropset: false })).toBe("+3 unsauber");
+  });
+
+  it("names a dropset", () => {
+    expect(formatSetExtras({ unclean_reps: 0, is_dropset: true })).toBe("Dropset");
+  });
+
+  it("joins both", () => {
+    expect(formatSetExtras({ unclean_reps: 2, is_dropset: true })).toBe("+2 unsauber · Dropset");
   });
 });
 

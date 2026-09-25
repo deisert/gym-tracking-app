@@ -4,7 +4,7 @@ import { formatKilos, formatMovedWeight, formatVolume, summarizeWorkout } from "
 import type { SetRecord, WorkoutExerciseDetail } from "@/lib/types";
 
 function set(position: number, weight_kg: number, reps: number, is_warmup = false): SetRecord {
-  return { id: `s${position}`, position, weight_kg, reps, is_warmup };
+  return { id: `s${position}`, position, weight_kg, reps, is_warmup, unclean_reps: 0, is_dropset: false };
 }
 
 function exercise(id: string, name: string, sets: SetRecord[]): WorkoutExerciseDetail {

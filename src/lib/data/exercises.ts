@@ -11,6 +11,8 @@ type RawSet = {
   weight_kg: number | string;
   reps: number;
   is_warmup: boolean;
+  unclean_reps: number;
+  is_dropset: boolean;
 };
 
 function toSetRecord(raw: RawSet): SetRecord {
@@ -20,6 +22,8 @@ function toSetRecord(raw: RawSet): SetRecord {
     weight_kg: Number(raw.weight_kg),
     reps: raw.reps,
     is_warmup: raw.is_warmup,
+    unclean_reps: raw.unclean_reps,
+    is_dropset: raw.is_dropset,
   };
 }
 
@@ -120,7 +124,7 @@ export async function getLastPerformances(
     .select(
       `id, exercise_id, workout_id,
        workouts!inner ( id, performed_on, created_at ),
-       sets ( id, position, weight_kg, reps, is_warmup )`
+       sets ( id, position, weight_kg, reps, is_warmup, unclean_reps, is_dropset )`
     )
     .in("exercise_id", exerciseIds)
     .neq("workout_id", excludeWorkoutId)

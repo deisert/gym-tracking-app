@@ -13,6 +13,8 @@ type Props = {
   weight: string;
   reps: string;
   isWarmup: boolean;
+  /** "+3 unsauber · Dropset" for imported sets; null when there is nothing to say. */
+  extras: string | null;
   ghost: GhostValue | null;
   status: SaveStatus;
   /** German failure copy from the server, rendered beneath the row. */
@@ -42,6 +44,7 @@ export function SetRow({
   weight,
   reps,
   isWarmup,
+  extras,
   ghost,
   status,
   error,
@@ -165,6 +168,7 @@ export function SetRow({
           </span>
         </div>
 
+        {extras && <p className="pl-8 text-sm text-muted-foreground">{extras}</p>}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </SwipeableRow>

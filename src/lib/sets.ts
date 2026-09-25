@@ -30,6 +30,20 @@ export function formatSetSummary(sets: SetRecord[]): string {
     .join(" · ");
 }
 
+/**
+ * What a set carries beyond weight × reps — "+3 unsauber · Dropset" — or null.
+ * Display only: the logging UI cannot enter either value yet, so this line is
+ * how imported history stays honest on screen.
+ */
+export function formatSetExtras(
+  set: Pick<SetRecord, "unclean_reps" | "is_dropset">
+): string | null {
+  const parts: string[] = [];
+  if (set.unclean_reps > 0) parts.push(`+${set.unclean_reps} unsauber`);
+  if (set.is_dropset) parts.push("Dropset");
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 export function nextPosition(items: { position: number }[]): number {
   if (items.length === 0) return 0;
   return Math.max(...items.map((i) => i.position)) + 1;

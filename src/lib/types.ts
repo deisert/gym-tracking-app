@@ -1,11 +1,14 @@
 /** A logged set. `weight_kg` is always a number here — PostgREST may hand
- *  back `numeric` columns as strings, so the data layer converts on the way in. */
+ *  back `numeric` columns as strings, so the data layer converts on the way in.
+ *  `reps` counts clean reps only; `unclean_reps` are extra, sloppy ones. */
 export type SetRecord = {
   id: string;
   position: number;
   weight_kg: number;
   reps: number;
   is_warmup: boolean;
+  unclean_reps: number;
+  is_dropset: boolean;
 };
 
 /** The most recent session of one exercise, used for ghost values. */
