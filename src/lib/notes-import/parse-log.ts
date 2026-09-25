@@ -32,8 +32,17 @@ function applyOverrides(lines: string[], overrides: Override[]): VLine[] {
     if (override.line > lines.length) {
       throw new Error(`Override for line ${override.line} is past the end of the file`);
     }
+    if ("replace" in override && override.replace.length === 0) {
+      throw new Error(`Override for line ${override.line} replaces the line with nothing`);
+    }
   }
-  const byLine = new Map(overrides.map((override) => [override.line, override]));
+  const byLine = new Map<number, Override>();
+  for (const override of overrides) {
+    if (byLine.has(override.line)) {
+      throw new Error(`Duplicate override for line ${override.line}`);
+    }
+    byLine.set(override.line, override);
+  }
 
   return lines.flatMap((raw, index): VLine[] => {
     const line = index + 1;
@@ -53,6 +62,17 @@ function applyOverrides(lines: string[], overrides: Override[]): VLine[] {
     if ("drop" in override) return [{ line, kind: "drop", reason: override.drop }];
     return [{ line, kind: "date", text: override.date }];
   });
+}
+
+/**
+ * Whether a line looks like a set in either grammar (weighted or bodyweight),
+ * independent of which exercise it falls under. Used to decide whether a
+ * date line after this one starts a new workout (spec §5.1).
+ */
+function isSetShaped(text: string): boolean {
+  const asWeighted = parseSetLine(text).kind;
+  if (asWeighted === "set" || asWeighted === "unknown-reps") return true;
+  return parseBodyweightLine(text).kind === "set";
 }
 
 function parseAnySet(text: string, current: Draft | null): SetLine {
@@ -223,7 +243,7 @@ export function parseLog(text: string, overrides: Override[] = OVERRIDES): Parse
       continue;
     }
 
-    if (v.kind === "text" && parseSetLine(v.text).kind === "set") block.hasSet = true;
+    if (v.kind === "text" && isSetShaped(v.text)) block.hasSet = true;
     block.lines.push(v);
   }
   blocks.push(block);

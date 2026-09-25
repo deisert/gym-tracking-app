@@ -131,4 +131,43 @@ describe("parseLog overrides", () => {
   it("refuses an override whose text does not match", () => {
     expect(() => parseLog(text, [{ line: 3, expect: "409", replace: ["40/9"] }])).toThrow(/expected "409"/);
   });
+
+  it("refuses two overrides for the same line", () => {
+    expect(() =>
+      parseLog(text, [
+        { line: 3, expect: "408", replace: ["40/8"] },
+        { line: 3, expect: "408", note: "duplicate" },
+      ])
+    ).toThrow(/Duplicate override for line 3/);
+  });
+
+  it("refuses a replace that erases the line entirely", () => {
+    expect(() => parseLog(text, [{ line: 3, expect: "408", replace: [] }])).toThrow(
+      /Override for line 3 replaces the line with nothing/
+    );
+  });
+
+  it("refuses an override past the end of the file", () => {
+    expect(() => parseLog(text, [{ line: 999, expect: "x", note: "n" }])).toThrow(
+      /Override for line 999 is past the end of the file/
+    );
+  });
+});
+
+describe("parseLog splits workouts after bodyweight-only sets", () => {
+  it("starts a new workout at a date line that follows a bodyweight set", () => {
+    const { workouts } = parseLog("————\nLeg raises\n7 straight 4 bent\n17.09\nCurls\n45/12", []);
+
+    // A leading separator with nothing before it yields an empty workout;
+    // the two that matter are the bodyweight one and the dated one after it.
+    expect(workouts).toHaveLength(3);
+    expect(workouts[1]).toMatchObject({
+      date: null,
+      exercises: [{ header: "Leg raises", sets: [{ weightKg: 0, reps: 7, uncleanReps: 4 }] }],
+    });
+    expect(workouts[2]).toMatchObject({
+      date: { day: 17, month: 9, year: null },
+      exercises: [{ header: "Curls" }],
+    });
+  });
 });
