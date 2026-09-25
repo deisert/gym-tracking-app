@@ -11,7 +11,7 @@
 export type ExerciseContext = {
   header: string;
   details: string[];
-  /** Heaviest set as written, before any per-side halving. */
+  /** Heaviest set as written. */
   maxWeightKg: number;
   performedOn: string;
   perSideNoted: boolean;
@@ -20,12 +20,6 @@ export type ExerciseContext = {
 export type Resolved = {
   name: string;
   attributes: Record<string, string>;
-  /**
-   * Per-side machine: a session written WITHOUT "each side" whose heaviest set
-   * reaches this weight was written as a total and gets halved. null = not a
-   * per-side machine.
-   */
-  halveAbove: number | null;
 };
 
 /** From here on the pulldown and row towers are a different machine (77/87 kg stack). */
@@ -40,11 +34,7 @@ export function isCardio(line: string): boolean {
 }
 
 function plain(name: string, attributes: Record<string, string> = {}): Resolved {
-  return { name, attributes, halveAbove: null };
-}
-
-function perSide(name: string, halveAbove: number, attributes: Record<string, string> = {}): Resolved {
-  return { name, attributes, halveAbove };
+  return { name, attributes };
 }
 
 function gripOf(t: string): Record<string, string> {
@@ -81,7 +71,7 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
     if (/tower/.test(t)) return plain("Bicep curls tower");
     if (w >= 45) return plain("Bicep curls machine");
     if (w >= 18 && w <= 25) return plain("Bicep curls tower");
-    return plain("Bicep curls free weight");
+    return plain("Bicep curls free machine with free weights");
   }
   if (/hyperextension/.test(t)) return plain("Hyperextensions");
   if (/extension/.test(t)) return plain("Leg extension");
@@ -93,14 +83,14 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
   if (/^tri|tricep/.test(t)) return triceps(t, w);
 
   if (/smith/.test(t)) return plain(/bench|incline/.test(t) ? "Incline smith press" : "Smith shoulder press");
-  if (/super/.test(t)) return perSide("Super incline press", 40);
-  if (/lateral bench press/.test(t)) return perSide("Incline bench machine", 40, { arm: "single" });
+  if (/super/.test(t)) return plain("Super incline press");
+  if (/lateral bench press/.test(t)) return plain("Incline bench machine", { arm: "single" });
   if (/chest press|bench press machine/.test(t)) return plain("Chest press machine");
   if (
     (/incline|bench/.test(t) && /machine/.test(t)) ||
     (/incline press/.test(t) && !/db/.test(t))
   ) {
-    return perSide("Incline bench machine", 40, /lateral/.test(t) ? { arm: "single" } : {});
+    return plain("Incline bench machine", /lateral/.test(t) ? { arm: "single" } : {});
   }
   if (/incline/.test(t)) {
     if (/db/.test(t)) return plain("Incline bench press");
@@ -111,10 +101,10 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
 
   if (/\brow\b/.test(t)) {
     if (/t bar/.test(t)) return plain("T-bar row");
-    if (/high to low/.test(t)) return perSide("Row machine high to low", 60);
+    if (/high to low/.test(t)) return plain("Row machine high to low");
     if (/single/.test(t) || (/lateral/.test(t) && /tower/.test(t))) return plain("Single Lat row tower");
     if (/lateral|unilateral|free weight|front/.test(t) || ctx.perSideNoted) {
-      return perSide("Row machine free weight", 60);
+      return plain("Row machine free weight");
     }
     if (/tower|close|wide|metal|plastic/.test(t)) {
       return plain(newTower ? "Row tower (neue Maschine)" : "Row tower", gripOf(t));
@@ -125,10 +115,14 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
   if (/pull ?-?down|pulldown|lap pull/.test(t)) {
     // Tricep-stack weights: these were pushdowns written down as pulldowns.
     if (w < 35) return /rope/.test(t) ? plain("Tri pushdown rope") : plain("Tri pushdown tower", tricepGripOf(t));
-    if (/machine|front|high to low/.test(t) || ctx.perSideNoted) return perSide("Lat pulldown machine", 60);
-    if (newTower) return plain("Lat Pulldown (neue Maschine)", gripOf(t));
-    // "lateral" means single-arm (owner, 2026-09-24).
-    if (/single|uni|lateral/.test(t) || w <= 45) return plain("Single Lat pulldown tower");
+    // "lateral" means single-arm (owner, 2026-09-24). A uni/single/lateral TOWER pulldown is
+    // single-arm on the tower stack even when "each side" is also noted — that check wins.
+    if (/tower/.test(t) && /single|uni|lateral/.test(t)) return plain("Lat Pulldown", { grip: "lateral" });
+    if (/machine|front|high to low/.test(t) || ctx.perSideNoted) return plain("Lat pulldown machine");
+    if (newTower) {
+      return w >= 70 ? plain("Lat pulldown tower", gripOf(t)) : plain("Lat Pulldown (neue Maschine)", gripOf(t));
+    }
+    if (/single|uni|lateral/.test(t) || w <= 45) return plain("Lat Pulldown", { grip: "lateral" });
     return plain("Lat Pulldown", gripOf(t));
   }
 

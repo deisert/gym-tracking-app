@@ -39,13 +39,26 @@ describe("buildImport", () => {
     expect(result.dropped).toEqual([{ line: 18, reason: "Workout ohne Sätze" }]);
   });
 
-  it("converts written totals to per-side weights", () => {
+  it("keeps per-side weights exactly as written (no halving or conversion)", () => {
     const [named, assumed] = result.workouts[0].exercises;
-    expect(named).toMatchObject({ name: "Incline bench machine", flags: ["umgerechnet"] });
-    expect(named.sets.map((s) => s.weightKg)).toEqual([30, 30]);
-    expect(named.note).toContain("Gesamtgewicht auf pro Seite umgerechnet");
-    expect(assumed).toMatchObject({ flags: ["halbiert"] });
-    expect(assumed.sets.map((s) => s.weightKg)).toEqual([30, 25]);
+    expect(named).toMatchObject({ name: "Incline bench machine", flags: [] });
+    expect(named.sets.map((s) => s.weightKg)).toEqual([60, 60]);
+    // "60/10 (30 each)" names an explicit per-side number, so no per-side note.
+    expect(named.note).toBeNull();
+    expect(assumed).toMatchObject({ flags: [] });
+    expect(assumed.sets.map((s) => s.weightKg)).toEqual([60, 50]);
+    expect(assumed.note).toBeNull();
+  });
+
+  it("notes 'Gewicht pro Seite' only when 'each side' is said without an explicit per-side number", () => {
+    const noted = buildImport(
+      parseLog(["17.09", "Row machine", "40/10 each side", "50/8 each side"].join("\n"), []),
+      { startYear: 2024 }
+    );
+    const [exercise] = noted.workouts[0].exercises;
+    expect(exercise.name).toBe("Row machine free weight");
+    expect(exercise.sets.map((s) => s.weightKg)).toEqual([40, 50]);
+    expect(exercise.note).toBe("Gewicht pro Seite");
   });
 
   it("carries unclean reps, annotations and sides into sets and notes", () => {

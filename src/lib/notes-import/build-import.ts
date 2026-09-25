@@ -1,11 +1,12 @@
 import { assignYears, fillMissingDates } from "./dates";
 import { resolveExercise } from "./exercise-map";
-import { roundKg } from "./weights";
 import type { ImportExercise, ImportResult, ImportWorkout, ParsedLog, RawExercise } from "./types";
 
 export function buildExercise(raw: RawExercise, performedOn: string): ImportExercise {
   const maxWritten = Math.max(...raw.sets.map((set) => set.weightKg));
   const perSideNoted = raw.sets.some((set) => set.perSide);
+  // "85/12 42.5 each side": one set named the per-side weight explicitly.
+  const explicitPerSide = raw.sets.some((set) => set.perSideWeightKg !== null);
   const resolved = resolveExercise({
     header: raw.header,
     details: raw.details,
@@ -15,16 +16,9 @@ export function buildExercise(raw: RawExercise, performedOn: string): ImportExer
   });
   if (!resolved) throw new Error(`No exercise rule for "${raw.header}" (line ${raw.line})`);
 
-  // "85/12 42.5 each side": this session's plain numbers are totals.
-  const writtenAsTotals = raw.sets.some(
-    (set) => set.perSideWeightKg !== null && Math.abs(set.weightKg - 2 * set.perSideWeightKg) < 0.01
-  );
-  // A per-side machine written far above its per-side range, with no note.
-  const assumedTotals = !perSideNoted && resolved.halveAbove !== null && maxWritten >= resolved.halveAbove;
-  const halve = writtenAsTotals || assumedTotals;
-
+  // Weights are stored exactly as written — no halving or conversion (owner decision 2026-09-25).
   const sets = raw.sets.map((set) => ({
-    weightKg: set.perSideWeightKg ?? (halve ? roundKg(set.weightKg / 2) : set.weightKg),
+    weightKg: set.weightKg,
     reps: set.reps,
     uncleanReps: set.uncleanReps,
     isWarmup: set.isWarmup,
@@ -37,16 +31,9 @@ export function buildExercise(raw: RawExercise, performedOn: string): ImportExer
     if (set.annotation) parts.push(`S${index + 1}: ${set.annotation}`);
   });
   if (raw.sets.some((set) => set.side !== null)) parts.push("Sätze einzeln L/R");
-  if (perSideNoted || resolved.halveAbove !== null) parts.push("Gewicht pro Seite");
-
-  const flags: string[] = [];
-  if (writtenAsTotals) {
-    parts.push("Gesamtgewicht auf pro Seite umgerechnet");
-    flags.push("umgerechnet");
-  } else if (assumedTotals) {
-    parts.push("Gewicht halbiert (vermutlich Gesamtgewicht notiert)");
-    flags.push("halbiert");
-  }
+  // Only note "per side" when a set said "each side" AND none named an explicit per-side
+  // number — an explicit number already makes it clear, and the weight isn't converted anyway.
+  if (perSideNoted && !explicitPerSide) parts.push("Gewicht pro Seite");
 
   return {
     line: raw.line,
@@ -54,7 +41,7 @@ export function buildExercise(raw: RawExercise, performedOn: string): ImportExer
     name: resolved.name,
     attributes: resolved.attributes,
     note: parts.length > 0 ? parts.join(" · ") : null,
-    flags,
+    flags: [],
     sets,
   };
 }

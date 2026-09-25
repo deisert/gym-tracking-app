@@ -25,7 +25,7 @@ describe("resolveExercise", () => {
     ["Bizepscurls", 45, "Bicep curls machine"],
     ["Bicep curls", 25, "Bicep curls tower"],
     ["Bicep curl tower", 28.75, "Bicep curls tower"],
-    ["Bicep curl hinten", 37.5, "Bicep curls free weight"],
+    ["Bicep curl hinten", 37.5, "Bicep curls free machine with free weights"],
     ["Curls machine", 47.5, "Bicep curls machine"],
     ["Hyperextensions", 20, "Hyperextensions"],
     ["Lex Extension", 72.5, "Leg extension"],
@@ -65,9 +65,9 @@ describe("resolveExercise", () => {
     ["Row wide plastic grip", 80, "Row tower"],
     ["Lat pulldown machine front", 45, "Lat pulldown machine"],
     ["Pulldown high to low", 50, "Lat pulldown machine"],
-    ["Tower pull-down single grip", 40, "Single Lat pulldown tower"],
-    ["Pulldown lateral", 80, "Single Lat pulldown tower"],
-    ["Tower pull-down metal", 40, "Single Lat pulldown tower"],
+    ["Tower pull-down single grip", 40, "Lat Pulldown"],
+    ["Pulldown lateral", 80, "Lat Pulldown"],
+    ["Tower pull-down metal", 40, "Lat Pulldown"],
     ["Lat pulldown mid wide grip", 80, "Lat Pulldown"],
     ["Lat raise machine", 45, "Lateral raise"],
     ["Lateral machine", 42.5, "Lateral raise"],
@@ -88,6 +88,13 @@ describe("resolveExercise", () => {
     expect(resolve("Lat pulldown lateral", 45, { perSide: true })?.name).toBe("Lat pulldown machine");
   });
 
+  it("sends uni/single/lateral tower pulldowns to Lat Pulldown lateral even with a per-side note", () => {
+    expect(resolve("Tower lat pulldown uni lateral grips", 40, { perSide: true })).toMatchObject({
+      name: "Lat Pulldown",
+      attributes: { grip: "lateral" },
+    });
+  });
+
   it("sends tricep-range 'lat pulldowns' to the pushdown", () => {
     expect(resolve("Lat pulldown short rope", 28.25)).toMatchObject({ name: "Tri pushdown rope" });
     expect(resolve("Lat pulldown triangle", 31.25)).toMatchObject({
@@ -96,8 +103,11 @@ describe("resolveExercise", () => {
     });
   });
 
-  it("gives the 2026 pulldown machine its own exercise", () => {
-    expect(resolve("Lat pulldown tower", 87, { date: "2026-07-31" })?.name).toBe("Lat Pulldown (neue Maschine)");
+  it("gives the 2026 pulldown machine its own exercise, split by weight", () => {
+    expect(resolve("Lat pulldown tower", 87, { date: "2026-07-31" })?.name).toBe("Lat pulldown tower");
+    expect(resolve("Lat pulldown wide lat focus", 38.5, { date: "2026-06-12" })?.name).toBe(
+      "Lat Pulldown (neue Maschine)"
+    );
     expect(resolve("Lat pulldown tower", 90, { date: "2025-11-04" })?.name).toBe("Lat Pulldown");
   });
 
@@ -119,14 +129,11 @@ describe("resolveExercise", () => {
     });
   });
 
-  it("tells per-side machines when to assume a written total", () => {
-    expect(resolve("Incline bench machine", 25)?.halveAbove).toBe(40);
-    expect(resolve("Row lateral machine", 85)?.halveAbove).toBe(60);
-    expect(resolve("Butterfly", 75)?.halveAbove).toBeNull();
-  });
-
   it("falls back to the detail lines when the header alone says nothing", () => {
-    expect(resolve("Lateral back", 80, { details: ["Pulldown"] })?.name).toBe("Single Lat pulldown tower");
+    expect(resolve("Lateral back", 80, { details: ["Pulldown"] })).toMatchObject({
+      name: "Lat Pulldown",
+      attributes: { grip: "lateral" },
+    });
   });
 
   it("returns null for text it does not know", () => {

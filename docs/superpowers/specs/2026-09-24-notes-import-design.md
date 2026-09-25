@@ -102,15 +102,14 @@ path outside the repo.
 - Weight is taken **as written** (no bar weight added).
 
 ### 5.3 Per-side weights
-Exercises noted with `each side` store the **per-side** weight: `85/12 42.5 each side` →
-42.5, `60/10 (30 each)` → 30. Otherwise the same machine's chart jumps between 25 and 60.
+Weights are stored **exactly as written**; there is no halving or conversion (owner decision
+2026-09-25). `85/12 42.5 each side` stores 85, `60/10 (30 each)` stores 60, `25/13 each side`
+stores 25 — the number after the slash, unchanged.
 
-- When one set names both numbers (`85/12 42.5 each side`), the other sets of that exercise
-  were written as totals and are halved too.
-- Plate-loaded machines that are logged per side elsewhere (incline bench machine, plate-loaded
-  rows, lat pulldown machine) but appear once **without** `each side` and with a weight far
-  above their per-side range are assumed to be totals and halved. Every such exercise is
-  flagged in the preview and noted on the exercise („Gewicht halbiert“).
+- The exercise note gets „Gewicht pro Seite" only when a set says `each side` **and** no set
+  in that exercise also names an explicit per-side number; if a set names the number (`42.5
+  each side`), that already makes it explicit and no note is added.
+- `ImportExercise.flags` stays in the type (the preview renders it) but is always empty now.
 
 ### 5.4 Overrides
 Typos and one-off shapes (`408` → 40/8, `5010`, `87/5/7_3`, `40//10`, `22.5:8`, reversed
@@ -128,14 +127,17 @@ by the heaviest set of that exercise in that workout:
 |---|---|
 | Incline bench (no suffix) | ≤ 30 kg → dumbbell („Incline bench press“), ≥ 40 kg → barbell (new exercise) |
 | Ab crunches | ≥ 80 kg → „Ab crunches machine“, else „Ab crunches freeweight“ |
-| Bicep curls | ≥ 45 kg → „Bicep curls machine“, 18–25 kg → tower, else free weight |
+| Bicep curls | ≥ 45 kg → „Bicep curls machine“, 18–25 kg → tower, else „Bicep curls free machine with free weights“ |
 | Tri press / overhead | ≥ 80 kg → tri press machine, else „Tri overhead pull“ |
 | Row machine with `each side` | plate-loaded row machine (separate from the stack row machine) |
-| „lateral“ on rows/pulldowns | means single-arm |
+| „lateral“ on rows | means single-arm |
+| Lateral / single-arm / uni tower pulldowns | „Lat Pulldown“ with `{grip: "lateral"}` — wins over the per-side machine check when the header says „tower“, even with `each side` noted |
+| Plate-loaded lat pulldown machine (front, high-to-low, or „lateral“ without „tower“ + `each side`) | „Lat pulldown machine“ |
 | „Lat pulldown“ with tricep-range weights (< 35 kg) | tricep pushdown |
 | Tri pushdown | rope → „Tri pushdown rope“, every other grip → „Tri pushdown tower“ + grip |
 | Lateral raise | < 20 kg, cross body or single → „Single Lateral raise tower“, else „Lateral raise“ |
-| Pulldown/row tower from 2026-06 | different machine → own exercise |
+| Row tower from 2026-06 | different machine → „Row tower (neue Maschine)“ |
+| Pulldown tower from 2026-06 | split by heaviest set: ≥ 70 kg → „Lat pulldown tower“, < 70 kg → „Lat Pulldown (neue Maschine)“ (both with grip attributes) |
 
 ### 5.6 Safety net
 Every line must end up as exactly one of: workout/exercise/set, note, override, or an
