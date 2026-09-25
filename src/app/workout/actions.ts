@@ -36,9 +36,11 @@ type RawSet = {
   weight_kg: number | string;
   reps: number;
   is_warmup: boolean;
+  unclean_reps: number;
+  is_dropset: boolean;
 };
 
-const SET_COLUMNS = "id, position, weight_kg, reps, is_warmup";
+const SET_COLUMNS = "id, position, weight_kg, reps, is_warmup, unclean_reps, is_dropset";
 
 function toSetRecord(raw: RawSet): SetRecord {
   return {
@@ -47,6 +49,8 @@ function toSetRecord(raw: RawSet): SetRecord {
     weight_kg: Number(raw.weight_kg),
     reps: raw.reps,
     is_warmup: raw.is_warmup,
+    unclean_reps: raw.unclean_reps,
+    is_dropset: raw.is_dropset,
   };
 }
 
@@ -282,6 +286,10 @@ export async function updateSet(
       weight_kg: parsed.data.weight_kg,
       reps: parsed.data.reps,
       is_warmup: parsed.data.is_warmup,
+      // `sets_warmup_xor_dropset` forbids both flags. Marking an imported
+      // dropset as warm-up must clear the dropset, or the save fails forever.
+      // `unclean_reps` is never written here: editing keeps what was imported.
+      ...(parsed.data.is_warmup ? { is_dropset: false } : {}),
     })
     .eq("id", setId)
     .select(SET_COLUMNS)

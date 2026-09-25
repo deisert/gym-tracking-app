@@ -7,7 +7,7 @@ import type { ActionFailureKind } from "@/app/workout/actions";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
 import { SwipeGroupProvider } from "@/components/ui/swipeable-row";
-import { formatWeight, ghostForPosition, nextActiveKey, type GhostValue } from "@/lib/sets";
+import { formatSetExtras, formatWeight, ghostForPosition, nextActiveKey, type GhostValue } from "@/lib/sets";
 import type { LastPerformance, SetRecord } from "@/lib/types";
 
 /** How long a successful save keeps its check before the row goes quiet again. */
@@ -21,6 +21,9 @@ type DraftRow = {
   weight: string;
   reps: string;
   isWarmup: boolean;
+  /** Server truth only — the row cannot edit these, it just shows them. */
+  uncleanReps: number;
+  isDropset: boolean;
   status: SaveStatus;
   /** The server's German failure copy, shown beneath the row. */
   error: string | null;
@@ -37,6 +40,8 @@ function toDraft(set: SetRecord): DraftRow {
     weight: formatWeight(set.weight_kg),
     reps: String(set.reps),
     isWarmup: set.is_warmup,
+    uncleanReps: set.unclean_reps,
+    isDropset: set.is_dropset,
     status: "idle",
     error: null,
     errorKind: null,
@@ -235,6 +240,8 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
           if (stillPresent) {
             patch(key, {
               id: result.data.id,
+              uncleanReps: result.data.unclean_reps,
+              isDropset: result.data.is_dropset,
               status: "saved",
               error: null,
               errorKind: null,
@@ -340,6 +347,8 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
         weight: "",
         reps: "",
         isWarmup: false,
+        uncleanReps: 0,
+        isDropset: false,
         status: "idle",
         error: null,
         errorKind: null,
@@ -388,6 +397,7 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
               weight={row.weight}
               reps={row.reps}
               isWarmup={row.isWarmup}
+              extras={formatSetExtras({ unclean_reps: row.uncleanReps, is_dropset: row.isDropset })}
               ghost={ghost}
               status={row.status}
               error={row.error}
@@ -399,7 +409,12 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
               onRepsChange={(value) => changeField(row.key, { reps: value })}
               onCommit={() => commit(row.key)}
               onToggleWarmup={() => {
-                patch(row.key, { isWarmup: !row.isWarmup });
+                // Turning a set into a warm-up clears its dropset — the server
+                // does the same (`sets_warmup_xor_dropset`).
+                patch(row.key, {
+                  isWarmup: !row.isWarmup,
+                  ...(row.isWarmup ? {} : { isDropset: false }),
+                });
                 commit(row.key);
               }}
               onDelete={() => removeRow(row.key)}
