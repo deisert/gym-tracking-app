@@ -101,3 +101,48 @@ describe("buildImport - anchors on every dated workout", () => {
     expect(result.dropped).toContainEqual({ line: 14, reason: "Workout ohne Sätze" });
   });
 });
+
+// A notes-only or category-only block with NO date must never enter the
+// interpolation list itself — only a dated or exercise-bearing workout can.
+// Otherwise a leading or trailing one has no dated neighbour on one side and
+// fillMissingDates throws, even though the old (pre-round-1) importer parsed
+// these logs fine.
+describe("buildImport - remark-only blocks never anchor interpolation", () => {
+  it("imports a leading, undated remark before any date without throwing", () => {
+    const LEADING_REMARK_LOG = [
+      "Some remark before any date",
+      "———",
+      "17.09",
+      "Row machine",
+      "60/10",
+    ].join("\n");
+
+    let result: ReturnType<typeof buildImport> | undefined;
+    expect(() => {
+      result = buildImport(parseLog(LEADING_REMARK_LOG, []), { startYear: 2024 });
+    }).not.toThrow();
+
+    expect(result?.workouts).toHaveLength(1);
+    expect(result?.workouts[0].performedOn).toBe("2024-09-17");
+    expect(result?.dropped).toContainEqual({ line: 1, reason: "Workout ohne Sätze" });
+  });
+
+  it("imports a trailing, undated remark after the last workout without throwing", () => {
+    const TRAILING_REMARK_LOG = [
+      "17.09",
+      "Row machine",
+      "60/10",
+      "———",
+      "Some trailing remark",
+    ].join("\n");
+
+    let result: ReturnType<typeof buildImport> | undefined;
+    expect(() => {
+      result = buildImport(parseLog(TRAILING_REMARK_LOG, []), { startYear: 2024 });
+    }).not.toThrow();
+
+    expect(result?.workouts).toHaveLength(1);
+    expect(result?.workouts[0].performedOn).toBe("2024-09-17");
+    expect(result?.dropped).toContainEqual({ line: 5, reason: "Workout ohne Sätze" });
+  });
+});

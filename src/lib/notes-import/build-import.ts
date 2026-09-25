@@ -64,28 +64,33 @@ export function buildImport(log: ParsedLog, options: { startYear: number }): Imp
   // a set-less session still marks where the new year began.
   const isoDates = assignYears(log.workouts.map((workout) => workout.date), options.startYear);
 
-  // Interpolate over every workout that carries real content — a date,
-  // notes, a category, or exercises — not just the ones we'll keep. A dated
-  // but set-less workout (dropped below) still anchors the estimate for its
-  // undated neighbours; excluding it here would silently interpolate from
-  // the wrong, more distant anchor. Only a content-free undated block (e.g.
-  // the empty block a leading separator produces) is left out entirely.
-  const real = log.workouts
+  // Interpolate only over workouts that can actually anchor a date: dated
+  // ones, and undated ones that carry exercises (which need an estimate). A
+  // dated but set-less workout (dropped below) still anchors the estimate
+  // for its undated neighbours; excluding it here would silently interpolate
+  // from the wrong, more distant anchor (round 1). But an undated,
+  // content-only block (just notes or a category, no exercises) must NOT
+  // enter this list itself — unlike a set-less workout it has no date of its
+  // own to contribute, so a leading or trailing one would have no dated
+  // neighbour on one side and fillMissingDates would throw, even though the
+  // old importer parsed logs like that fine.
+  const anchored = log.workouts
     .map((workout, index) => ({ workout, date: isoDates[index] }))
+    .filter(({ workout, date }) => date !== null || workout.exercises.length > 0);
+
+  const filled = fillMissingDates(anchored.map(({ date }) => date));
+  const resolved = anchored.map(({ workout }, index) => ({ workout, ...filled[index] }));
+
+  // `dropped` is computed separately over ALL workouts (not just `anchored`)
+  // so a content-only block — dated or not — is still reported, even though
+  // an undated one never entered interpolation above.
+  const dropped = log.workouts
     .filter(
-      ({ workout, date }) =>
-        date !== null || workout.notes.length > 0 || workout.category !== null || workout.exercises.length > 0
-    );
-
-  const filled = fillMissingDates(real.map(({ date }) => date));
-  const resolved = real.map(({ workout }, index) => ({ workout, ...filled[index] }));
-
-  // Undated, set-less workouts in `resolved` (e.g. a category-only block)
-  // get an estimate here too, but nobody reads it — they end up in `dropped`,
-  // which only carries line + reason.
-  const dropped = resolved
-    .filter(({ workout }) => workout.exercises.length === 0)
-    .map(({ workout }) => ({ line: workout.line, reason: "Workout ohne Sätze" }));
+      (workout) =>
+        workout.exercises.length === 0 &&
+        (workout.date !== null || workout.notes.length > 0 || workout.category !== null)
+    )
+    .map((workout) => ({ line: workout.line, reason: "Workout ohne Sätze" }));
 
   const workouts: ImportWorkout[] = resolved
     .filter(({ workout }) => workout.exercises.length > 0)
