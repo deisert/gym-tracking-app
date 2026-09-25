@@ -59,3 +59,45 @@ describe("buildImport", () => {
     expect(result.workouts[2].exercises[0].sets[0].isDropset).toBe(true);
   });
 });
+
+// A dated but set-less workout (dropped) must still anchor date interpolation
+// for its undated neighbours, and a category-only, set-less workout must not
+// vanish from `dropped`.
+const ANCHOR_LOG = [
+  "01.09",
+  "Row machine",
+  "50/10",
+  "———",
+  "03.09",
+  "———",
+  "Squat",
+  "60/8",
+  "———",
+  "30.09",
+  "Row machine",
+  "55/8",
+  "———",
+  "Upper Body",
+  "———",
+  "05.10",
+  "Squat",
+  "60/8",
+].join("\n");
+
+describe("buildImport - anchors on every dated workout", () => {
+  const result = buildImport(parseLog(ANCHOR_LOG, []), { startYear: 2024 });
+
+  it("interpolates an undated workout between its real dated neighbours, including a set-less one", () => {
+    // Neighbours are 03.09 (dropped, set-less) and 30.09. Even spreading
+    // between them lands on 2024-09-17 — not 2024-09-16, which is what you get
+    // if the set-less 03.09 workout is dropped from the anchor list first and
+    // 01.09 is used as the near anchor instead.
+    const undated = result.workouts.find((w) => w.line === 7);
+    expect(undated?.performedOn).toBe("2024-09-17");
+    expect(undated?.dateEstimated).toBe(true);
+  });
+
+  it("keeps a category-only, set-less workout in dropped", () => {
+    expect(result.dropped).toContainEqual({ line: 14, reason: "Workout ohne Sätze" });
+  });
+});

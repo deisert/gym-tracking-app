@@ -63,27 +63,43 @@ export function buildImport(log: ParsedLog, options: { startYear: number }): Imp
   // Years come from ALL dated blocks in file order, dropped ones included —
   // a set-less session still marks where the new year began.
   const isoDates = assignYears(log.workouts.map((workout) => workout.date), options.startYear);
-  const kept = log.workouts
+
+  // Interpolate over every workout that carries real content — a date,
+  // notes, a category, or exercises — not just the ones we'll keep. A dated
+  // but set-less workout (dropped below) still anchors the estimate for its
+  // undated neighbours; excluding it here would silently interpolate from
+  // the wrong, more distant anchor. Only a content-free undated block (e.g.
+  // the empty block a leading separator produces) is left out entirely.
+  const real = log.workouts
     .map((workout, index) => ({ workout, date: isoDates[index] }))
-    .filter(({ workout }) => workout.exercises.length > 0);
-  const filled = fillMissingDates(kept.map(({ date }) => date));
+    .filter(
+      ({ workout, date }) =>
+        date !== null || workout.notes.length > 0 || workout.category !== null || workout.exercises.length > 0
+    );
 
-  const dropped = log.workouts
-    .filter((workout) => workout.exercises.length === 0 && (workout.date !== null || workout.notes.length > 0))
-    .map((workout) => ({ line: workout.line, reason: "Workout ohne Sätze" }));
+  const filled = fillMissingDates(real.map(({ date }) => date));
+  const resolved = real.map(({ workout }, index) => ({ workout, ...filled[index] }));
 
-  const workouts: ImportWorkout[] = kept.map(({ workout }, index) => {
-    const { date, estimated } = filled[index];
-    const notes = [...workout.notes, ...(estimated ? ["Datum geschätzt"] : [])];
-    return {
-      line: workout.line,
-      performedOn: date,
-      dateEstimated: estimated,
-      category: workout.category,
-      note: notes.length > 0 ? notes.join(" · ") : null,
-      exercises: workout.exercises.map((exercise) => buildExercise(exercise, date)),
-    };
-  });
+  // Undated, set-less workouts in `resolved` (e.g. a category-only block)
+  // get an estimate here too, but nobody reads it — they end up in `dropped`,
+  // which only carries line + reason.
+  const dropped = resolved
+    .filter(({ workout }) => workout.exercises.length === 0)
+    .map(({ workout }) => ({ line: workout.line, reason: "Workout ohne Sätze" }));
+
+  const workouts: ImportWorkout[] = resolved
+    .filter(({ workout }) => workout.exercises.length > 0)
+    .map(({ workout, date, estimated }) => {
+      const notes = [...workout.notes, ...(estimated ? ["Datum geschätzt"] : [])];
+      return {
+        line: workout.line,
+        performedOn: date,
+        dateEstimated: estimated,
+        category: workout.category,
+        note: notes.length > 0 ? notes.join(" · ") : null,
+        exercises: workout.exercises.map((exercise) => buildExercise(exercise, date)),
+      };
+    });
 
   workouts.sort((a, b) => a.performedOn.localeCompare(b.performedOn) || a.line - b.line);
   return { workouts, dropped };
