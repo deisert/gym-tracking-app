@@ -94,9 +94,9 @@ function match(t: string, ctx: ExerciseContext): Resolved | null {
 
   if (/smith/.test(t)) return plain(/bench|incline/.test(t) ? "Incline smith press" : "Smith shoulder press");
   if (/super/.test(t)) return perSide("Super incline press", 40);
-  if ((/chest press|bench press machine/.test(t)) && !/lateral/.test(t)) return plain("Chest press machine");
+  if (/lateral bench press/.test(t)) return perSide("Incline bench machine", 40, { arm: "single" });
+  if (/chest press|bench press machine/.test(t)) return plain("Chest press machine");
   if (
-    /lateral bench press/.test(t) ||
     (/incline|bench/.test(t) && /machine/.test(t)) ||
     (/incline press/.test(t) && !/db/.test(t))
   ) {

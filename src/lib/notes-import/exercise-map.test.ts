@@ -52,6 +52,8 @@ describe("resolveExercise", () => {
     ["Incline bench press", 60, "Incline bench press barbell"],
     ["Bench incline BB", 65, "Incline bench press barbell"],
     ["Bench press", 75, "Bench Press"],
+    ["Lateral bench press machine", 25, "Incline bench machine"],
+    ["Chest press lateral", 60, "Chest press machine"],
     ["T bar row", 50, "T-bar row"],
     ["Row high to low machine", 50, "Row machine high to low"],
     ["Row tower lat focus single", 42.5, "Single Lat row tower"],
@@ -108,6 +110,10 @@ describe("resolveExercise", () => {
 
   it("marks single-arm incline presses", () => {
     expect(resolve("Incline lateral bench press machine", 50)).toMatchObject({
+      name: "Incline bench machine",
+      attributes: { arm: "single" },
+    });
+    expect(resolve("Lateral bench press machine", 25)).toMatchObject({
       name: "Incline bench machine",
       attributes: { arm: "single" },
     });
