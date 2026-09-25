@@ -44,6 +44,7 @@ describe("parseSetLine", () => {
     ["20/10+5", 10, 5],
     ["40/7-3", 7, 3],
     ["82.5/11.5", 11, 1],
+    ["82.5/11,5", 11, 1],
     ["45/12 3halbe", 12, 3],
     ["80/8 (3 -4 half)", 8, 3],
   ])("reads unclean reps in %s", (line, reps, unclean) => {

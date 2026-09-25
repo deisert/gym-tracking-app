@@ -11,7 +11,7 @@ const WEIGHT = String.raw`\d+(?:[.,]\d+)?(?:\s*\+\s*\d+(?:[.,]\d+)?)*`;
 const SET_START = new RegExp(String.raw`^(${WEIGHT})\s*/\s*(.*)$`);
 // reps, optional "-N" (range, or old-style unclean when N is smaller),
 // optional "_N" / "+N" unclean reps, stray "?", then free text.
-const REPS = /^(\d+(?:\.\d+)?)(?:\s*-\s*(\d+))?\s*(?:_+\s*(\d+)|\+\s*(\d+))?\s*\?*\s*(.*)$/;
+const REPS = /^(\d+(?:[.,]\d+)?)(?:\s*-\s*(\d+))?\s*(?:_+\s*(\d+)|\+\s*(\d+))?\s*\?*\s*(.*)$/;
 const BARE = /^\d+(?:[.,]\d+)?$/;
 
 type Annotation = {
@@ -73,7 +73,7 @@ export function parseSetLine(input: string): SetLine {
   if (!reps) return { kind: "unknown-reps", weightKg };
 
   const [, first, second, underscore, plus, tail] = reps;
-  let clean = Number(first);
+  let clean = Number(first.replace(",", "."));
   let unclean = Number(underscore ?? plus ?? 0);
   if (second !== undefined) {
     const upper = Number(second);
