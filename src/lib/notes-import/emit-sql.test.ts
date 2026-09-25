@@ -75,12 +75,53 @@ describe("emitImportSql", () => {
     const bad = [{ ...workouts[0], note: "$payload$" }];
     expect(() => emitImportSql(bad, { userId: USER, mode: "commit" })).toThrow(/payload/);
   });
+
+  it("rejects text that would end the do-block quote", () => {
+    const bad = [{ ...workouts[0], note: "$import$" }];
+    expect(() => emitImportSql(bad, { userId: USER, mode: "commit" })).toThrow(/import/);
+  });
+
+  it("rehearses the double-import guard in dry-run mode too", () => {
+    const sql = emitImportSql(workouts, { userId: USER, mode: "dry-run" });
+    expect(sql).toContain("NOTES_IMPORT_ABORT");
+  });
 });
 
 describe("emitRollbackSql", () => {
+  const NAMES = ["Incline bench press barbell", "Lat Pulldown"];
+
   it("deletes the imported range and the exercises it created", () => {
-    const sql = emitRollbackSql({ userId: USER, lastDate: "2026-08-16", generatedAt: "2026-09-25T10:00:00.000Z" });
+    const sql = emitRollbackSql({
+      userId: USER,
+      lastDate: "2026-08-16",
+      generatedAt: "2026-09-25T10:00:00.000Z",
+      exerciseNames: NAMES,
+    });
     expect(sql).toContain("performed_on <= '2026-08-16'");
     expect(sql).toContain("created_at >= '2026-09-25T10:00:00.000Z'");
+    expect(sql).toContain("jsonb_array_elements_text(names)");
+    expect(sql).toContain(JSON.stringify(NAMES));
+  });
+
+  it("rejects a name containing the quote tag", () => {
+    expect(() =>
+      emitRollbackSql({
+        userId: USER,
+        lastDate: "2026-08-16",
+        generatedAt: "2026-09-25T10:00:00.000Z",
+        exerciseNames: ["$names$"],
+      })
+    ).toThrow(/quote tag/);
+  });
+
+  it("rejects a malformed generatedAt", () => {
+    expect(() =>
+      emitRollbackSql({
+        userId: USER,
+        lastDate: "2026-08-16",
+        generatedAt: "2026-09-25 (x')",
+        exerciseNames: NAMES,
+      })
+    ).toThrow(/timestamp/);
   });
 });
