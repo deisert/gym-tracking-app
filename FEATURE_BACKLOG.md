@@ -21,7 +21,7 @@ Companion to `CONCEPT.md`. These are post-v1 ideas — nothing here blocks the v
 | 1 | **Rest timer with auto-start** | Starts when a set is saved, notifies when rest is over; lives inline in the log screen. | M | L |
 | 2 | **Plate calculator** | Tap a weight → shows which plates to load per side. In-gym utility with delight factor. | M | L |
 | 3 | **Frequency goal + streak framing** | Set a goal like "3×/week"; heatmap shows progress toward it. Encouraging, not guilt-driven. | M | L |
-| 4 | **Exercise detail page** | One place per exercise: history, PRs, notes, variation filter; deep-linkable from the dashboard. | M | M |
+| 4 | **Exercise detail page** | One place per exercise: history, PRs, notes, variation filter; deep-linkable from the dashboard. Spec: `docs/superpowers/specs/2026-09-30-exercise-detail-page-design.md`. | M | M |
 | 5 | **Dark mode / gym-floor contrast** | High-contrast, large-type logging mode for harsh gym lighting. | L | L |
 
 ## Engineer perspective

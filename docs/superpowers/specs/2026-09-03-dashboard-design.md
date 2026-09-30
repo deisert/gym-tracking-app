@@ -118,6 +118,7 @@ Recharts (`CONCEPT.md` §5), roughly at 8–10 weeks of data:
 
 - **Per-exercise progress** — line chart with the metric toggle from `CONCEPT.md` §2.9:
   Top-Satz / e1RM / Volumen. Lives on the exercise detail page; the dashboard links into it.
+  Specified in `2026-09-30-exercise-detail-page-design.md`.
 - **Wochenvolumen** — bars, 12 weeks, one hue. The chart form for §2.1's number.
 - **Kategorie-Split** — only worth a chart at 3+ categories in regular use.
 
