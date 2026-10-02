@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { ExerciseList } from "@/components/dashboard/exercise-list";
 import { RecordsList } from "@/components/dashboard/records-list";
 import { BlockError, DashboardSection } from "@/components/dashboard/section";
@@ -91,6 +93,12 @@ export default async function DashboardPage() {
       {(totals === null || totals.workoutCount >= MIN_WORKOUTS_FOR_EXERCISES) && (
         <DashboardSection title="Deine Übungen">
           {exercises ? <ExerciseList exercises={exercises} /> : <BlockError />}
+          <Link
+            href="/dashboard/exercises"
+            className="mt-2 inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+          >
+            Alle Übungen →
+          </Link>
         </DashboardSection>
       )}
 

@@ -322,6 +322,13 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > this task moves to `@gymtrack/core`, so the import rewiring must include them.
 > `dates.ts` gained `addDays`/`mondayOf` and `workout-summary.ts` gained
 > `formatMovedWeight`; both move with their modules.
+>
+> **Since 2026-10-02 (exercise detail page):** `src/lib/exercise-detail.ts`,
+> `src/lib/data/exercise-detail.ts` and `src/components/exercise/*` stay in
+> `apps/web` as well, for the same reason, and need the same rewiring.
+> `dates.ts` gained `formatPerformedOnInYear`, `formatMonthYear` and
+> `daysBetween`; they move with it. The app now depends on `recharts`
+> (`apps/web` only).
 
 > **Why this is still worth doing with the native fork open.** The original
 > justification was "so the mobile app can import it" — true for React Native,

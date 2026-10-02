@@ -53,3 +53,24 @@ export function mondayOf(isoDate: string): string {
   const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // Sunday = 0
   return addDays(isoDate, -((weekday + 6) % 7));
 }
+
+/** "12. Aug" within `today`'s year, "12. Aug 2025" outside it — two years of history need the year. */
+export function formatPerformedOnInYear(isoDate: string, today: string): string {
+  const short = formatPerformedOn(isoDate);
+  return isoDate.slice(0, 4) === today.slice(0, 4) ? short : `${short} ${isoDate.slice(0, 4)}`;
+}
+
+/** "2024-04-17" -> "Apr 2024". */
+export function formatMonthYear(isoDate: string): string {
+  const [year, month] = isoDate.split("-");
+  return `${MONTHS_DE[Number(month) - 1]} ${year}`;
+}
+
+/** Whole calendar days from `from` to `to`, both "YYYY-MM-DD"; negative if `to` is earlier. */
+export function daysBetween(from: string, to: string): number {
+  const toUtc = (iso: string) => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtc(to) - toUtc(from)) / 86_400_000);
+}

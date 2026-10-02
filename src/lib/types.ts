@@ -95,3 +95,74 @@ export type DashboardData = {
   records: ExerciseRecord[] | null;
   exercises: TopExercise[] | null;
 };
+
+/**
+ * One row of `v_exercise_sets`: a set of one exercise with its session context.
+ * `e1rmKg` and `volumeKg` come from Postgres — the app never computes either.
+ */
+export type ExerciseSetRow = {
+  workoutId: string;
+  performedOn: string;
+  workoutCreatedAt: string;
+  category: string | null;
+  workoutExerciseId: string;
+  workoutExercisePosition: number;
+  note: string | null;
+  attributes: Record<string, string>;
+  set: SetRecord;
+  volumeKg: number;
+  e1rmKg: number;
+};
+
+/** A lift with the date it happened — what a best or a tile points at. */
+export type DatedLift = {
+  workoutId: string;
+  weightKg: number;
+  reps: number;
+  e1rmKg: number;
+  performedOn: string;
+};
+
+/**
+ * One workout's worth of one exercise. An exercise logged twice in the same
+ * workout is still one session, sets in logged order (spec §4.5).
+ */
+export type ExerciseSession = {
+  workoutId: string;
+  performedOn: string;
+  category: string | null;
+  sets: SetRecord[];
+  notes: string[];
+  attributes: Record<string, string>;
+  workingSetCount: number;
+  warmupCount: number;
+  uncleanReps: number;
+  dropsetCount: number;
+  /** Heaviest working set, more reps on a tie. Null for a warm-up-only session. */
+  top: DatedLift | null;
+  /** Best Epley value of a working set, heavier on a tie. */
+  bestE1rm: DatedLift | null;
+  /** Every set, warm-ups included (volume evaluation §5.1). */
+  volumeKg: number;
+  /** Clean reps of the best working set, and of all working sets. */
+  maxReps: number;
+  totalReps: number;
+};
+
+/** The exercises row the detail page is about. */
+export type ExerciseInfo = {
+  id: string;
+  name: string;
+  note: string | null;
+  isArchived: boolean;
+};
+
+/** One row of `v_exercise_overview` — „Alle Übungen“. */
+export type ExerciseOverviewRow = {
+  exerciseId: string;
+  name: string;
+  isArchived: boolean;
+  sessionCount: number;
+  firstPerformedOn: string;
+  lastPerformedOn: string;
+};
