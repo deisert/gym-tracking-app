@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { addDays, formatPerformedOn, localDateString, mondayOf, startOfWeekMonday } from "@/lib/dates";
+import {
+  addDays,
+  daysBetween,
+  formatMonthYear,
+  formatPerformedOn,
+  formatPerformedOnInYear,
+  localDateString,
+  mondayOf,
+  startOfWeekMonday,
+} from "@/lib/dates";
 
 describe("localDateString", () => {
   it("formats a local date without shifting through UTC", () => {
@@ -68,5 +77,18 @@ describe("mondayOf", () => {
       const iso = `2026-08-${String(day).padStart(2, "0")}`;
       expect(mondayOf(iso)).toBe(startOfWeekMonday(new Date(2026, 7, day)));
     }
+  });
+});
+
+describe("date helpers", () => {
+  it("adds the year only outside the current one", () => {
+    expect(formatPerformedOnInYear("2026-08-12", "2026-09-30")).toBe("12. Aug");
+    expect(formatPerformedOnInYear("2025-08-12", "2026-09-30")).toBe("12. Aug 2025");
+  });
+
+  it("formats a month and counts days across a DST switch", () => {
+    expect(formatMonthYear("2024-04-17")).toBe("Apr 2024");
+    expect(daysBetween("2026-03-28", "2026-03-30")).toBe(2);
+    expect(daysBetween("2026-09-30", "2026-09-25")).toBe(-5);
   });
 });

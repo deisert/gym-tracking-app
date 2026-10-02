@@ -1,8 +1,9 @@
 # Exercise detail page — one landing page per exercise
 
 **Date:** 2026-09-30
-**Status:** draft — open decisions in §11, awaiting Dominik; the executable plan follows once
-they are taken (same order as the dashboard: spec → decisions → plan)
+**Status:** phase A implemented 2026-10-02 on `claude/exercise-detail-spec`; §11 taken with the
+recommended defaults (§12), open to veto. Migration `20261002150537` applied and recorded on
+2026-10-02; `supabase/checks/exercise_detail_views.sql` passed against the project.
 **Companions:** `docs/superpowers/specs/2026-09-03-dashboard-design.md` (§3 record
 definitions, §5 phase 2, §10.6 „plain rows, no links“ — lifted by this page),
 `docs/superpowers/specs/2026-09-03-total-volume-evaluation.md` (§5 what volume means),
@@ -181,7 +182,8 @@ each kind is exactly the newest record event `exercise_records()` would return f
 page and the dashboard can never name different dates for the same best — without the page
 calling the record function at all (§7).
 
-Bodyweight exercises (§6): the block shows only „Meiste Wdh.“, the single row at 0 kg.
+Bodyweight exercises (§6): the block is left out — its only best, „Meiste Wdh.“, is already the
+right tile of §4.2.
 
 ### 4.5 Sessions *(from session 1)*
 Reverse-chronological, a year heading when the year changes (two years of history), the
@@ -384,3 +386,27 @@ Each has a recommendation; the page is designed around it.
 7. **Language of the route** — `/dashboard/exercises/[id]` (matches `/workout/[id]`) or German
    `/dashboard/uebungen/[id]`?
    *Recommended: English*, like every existing route; the UI text is German regardless.
+
+## 12. Decisions — 2026-10-02
+
+Dominik started the implementation without answering §11 one by one, so every question
+was taken with its recommendation. *(Claude's defaults, open to veto.)*
+
+1. Phase A ships whole, index included.
+2. e1RM is the default metric.
+3. `1 J` is the default range once the history is longer than a year.
+4. Dropsets keep counting as working sets, on both screens.
+5. No link from the log screen's exercise name.
+6. Assisted exercises keep the inverted line; stated in §6.
+7. English route: `/dashboard/exercises/[id]`.
+
+Taken while building, beyond §11:
+
+8. **Y-axis ticks are round steps** (1/2/2,5/5 × 10ⁿ, never 2,5 for reps), and the axis
+   spans exactly those ticks. Recharts' own ticks on a non-zero domain read „59 · 74 · 89“.
+9. **Bodyweight sessions read „8 · 7 Wdh.“**, not „0 × 8 · 0 × 7“ — the `formatLift` rule,
+   applied to the session line.
+10. **„Alle Gewichte“ and the per-weight table use a native `<details>`**; „Alle Sessions“ is
+    the `?sessions=alle` search param. Neither needs client JavaScript.
+11. **The sets query pages in 1000-row steps** on a unique ordering, so PostgREST's
+    max-rows cap can never silently cut an exercise's history short.
