@@ -2,8 +2,8 @@
 
 **Date:** 2026-09-30
 **Status:** phase A implemented 2026-10-02 on `claude/exercise-detail-spec`; §11 taken with the
-recommended defaults (§12), open to veto. Migration `20261002120000` written and checked
-against a local Postgres, **not yet applied** to the Supabase project.
+recommended defaults (§12), open to veto. Migration `20261002150537` applied and recorded on
+2026-10-02; `supabase/checks/exercise_detail_views.sql` passed against the project.
 **Companions:** `docs/superpowers/specs/2026-09-03-dashboard-design.md` (§3 record
 definitions, §5 phase 2, §10.6 „plain rows, no links“ — lifted by this page),
 `docs/superpowers/specs/2026-09-03-total-volume-evaluation.md` (§5 what volume means),
