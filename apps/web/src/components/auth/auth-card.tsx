@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+
+import { magicLinkWillStrand } from "@gymtrack/core";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +47,11 @@ export function AuthCard({
   // came from that path itself.
   const [signupUsePassword, setSignupUsePassword] = useState(error !== "signup-magic");
   const [loginUsePassword, setLoginUsePassword] = useState(error !== "magic" && error !== "link");
+
+  // useSyncExternalStore keeps the server snapshot (false) for hydration and
+  // switches to the real value afterwards, so the first render matches the
+  // server's HTML even though navigator and matchMedia only exist in the browser.
+  const magicStrands = useSyncExternalStore(subscribeNoop, detectMagicStrands, () => false);
 
   if (sent) {
     return (
@@ -161,6 +168,12 @@ export function AuthCard({
                 required
               />
             </div>
+            {magicStrands && (
+              <p className="text-xs text-muted-foreground">
+                Der Link öffnet sich in Safari, nicht in dieser App. Du bleibst hier dann
+                abgemeldet – nimm lieber dein Passwort.
+              </p>
+            )}
             {error === "signup-magic" && (
               <p className="text-sm text-destructive">{ERROR_MESSAGES["signup-magic"]}</p>
             )}
@@ -228,6 +241,12 @@ export function AuthCard({
                 required
               />
             </div>
+            {magicStrands && (
+              <p className="text-xs text-muted-foreground">
+                Der Link öffnet sich in Safari, nicht in dieser App. Du bleibst hier dann
+                abgemeldet – nimm lieber dein Passwort.
+              </p>
+            )}
             {(error === "magic" || error === "link") && (
               <p className="text-sm text-destructive">{ERROR_MESSAGES[error]}</p>
             )}
@@ -246,6 +265,18 @@ export function AuthCard({
       </CardContent>
     </Card>
   );
+}
+
+// The display mode does not change while the page is open.
+function subscribeNoop() {
+  return () => {};
+}
+
+function detectMagicStrands() {
+  return magicLinkWillStrand({
+    isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+    isStandalone: window.matchMedia("(display-mode: standalone)").matches,
+  });
 }
 
 function tabClass(active: boolean) {
