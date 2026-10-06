@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { localDateString } from "@/lib/dates";
+import { localDateString } from "@gymtrack/core";
 import { startWorkout } from "@/app/workout/actions";
 
 export function StartWorkoutButton() {

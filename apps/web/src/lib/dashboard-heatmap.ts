@@ -1,6 +1,10 @@
-import { addDays, formatPerformedOn, mondayOf } from "@/lib/dates";
-import { formatVolume } from "@/lib/workout-summary";
-import type { DayStat } from "@/lib/types";
+import {
+  addDays,
+  type DayStat,
+  formatPerformedOn,
+  formatVolume,
+  mondayOf,
+} from "@gymtrack/core";
 
 export const HEATMAP_WEEKS = 12;
 

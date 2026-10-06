@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { removeWorkoutExercise } from "@/app/workout/actions";
 import { SetList } from "@/components/workout/set-list";
 import { SwipeableRow, SwipeGroupProvider } from "@/components/ui/swipeable-row";
-import type { LastPerformance, WorkoutExerciseDetail } from "@/lib/types";
+import type { LastPerformance, WorkoutExerciseDetail } from "@gymtrack/core";
 
 type Props = {
   workoutId: string;

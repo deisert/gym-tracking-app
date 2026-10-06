@@ -1,17 +1,17 @@
 import "server-only";
 
 import { heatmapStart } from "@/lib/dashboard-heatmap";
-import { addDays } from "@/lib/dates";
+import {
+  addDays,
+  type DashboardData,
+  type DayStat,
+  type ExerciseRecord,
+  type RecordKind,
+  type TopExercise,
+  type WeekStat,
+} from "@gymtrack/core";
 import { RECORDS_WINDOW_DAYS } from "@/lib/records";
 import { createServerSupabase } from "@/lib/supabase/server";
-import type {
-  DashboardData,
-  DayStat,
-  ExerciseRecord,
-  RecordKind,
-  TopExercise,
-  WeekStat,
-} from "@/lib/types";
 
 /** „Deine Übungen“ shows this many (spec §10.6). */
 export const TOP_EXERCISE_COUNT = 5;

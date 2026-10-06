@@ -1,5 +1,4 @@
-import { addDays, mondayOf } from "@/lib/dates";
-import type { WeekStat } from "@/lib/types";
+import { addDays, mondayOf, type WeekStat } from "@gymtrack/core";
 
 /**
  * A week counts toward the streak at this many workouts (spec §9.3). A user

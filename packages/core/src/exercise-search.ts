@@ -1,4 +1,4 @@
-import type { ExerciseOption } from "@/lib/types";
+import type { ExerciseOption } from "./types";
 
 /**
  * A picker entry: an exercise plus the recency the ordering is built from.

@@ -1,6 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import type { WeekStat } from "@/lib/types";
-import { formatKilos } from "@/lib/workout-summary";
+import { formatKilos, type WeekStat } from "@gymtrack/core";
 
 /** „Diese Woche“: the two numbers the end-of-workout summary speaks in, one level up. */
 export function StatTiles({ week }: { week: WeekStat }) {

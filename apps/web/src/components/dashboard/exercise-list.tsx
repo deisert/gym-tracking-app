@@ -1,9 +1,8 @@
 import Link from "next/link";
 
-import { formatPerformedOn } from "@/lib/dates";
+import { formatPerformedOn, type TopExercise } from "@gymtrack/core";
 import { HEATMAP_WEEKS } from "@/lib/dashboard-heatmap";
 import { formatLift } from "@/lib/records";
-import type { TopExercise } from "@/lib/types";
 
 /** „Deine Übungen“. Each row opens the exercise page. */
 export function ExerciseList({ exercises }: { exercises: TopExercise[] }) {

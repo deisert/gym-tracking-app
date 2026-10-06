@@ -5,7 +5,7 @@ import type {
   WorkoutDetail,
   WorkoutExerciseDetail,
   WorkoutSummary,
-} from "@/lib/types";
+} from "@gymtrack/core";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 /** Shape PostgREST returns for the nested select below. `numeric` may arrive as a string. */

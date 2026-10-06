@@ -8,7 +8,7 @@ import {
   localDateString,
   mondayOf,
   startOfWeekMonday,
-} from "@/lib/dates";
+} from "./dates";
 
 describe("localDateString", () => {
   it("formats a local date without shifting through UTC", () => {

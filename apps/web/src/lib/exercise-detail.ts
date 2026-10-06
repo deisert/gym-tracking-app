@@ -1,6 +1,14 @@
-import { addDays, daysBetween, formatMonthYear, formatPerformedOnInYear } from "@/lib/dates";
-import { formatSetSummary } from "@/lib/sets";
-import type { DatedLift, ExerciseSession, ExerciseSetRow, SetRecord } from "@/lib/types";
+import {
+  addDays,
+  type DatedLift,
+  daysBetween,
+  type ExerciseSession,
+  type ExerciseSetRow,
+  formatMonthYear,
+  formatPerformedOnInYear,
+  formatSetSummary,
+  type SetRecord,
+} from "@gymtrack/core";
 
 /**
  * The exercise detail page, shaped from one exercise's sets

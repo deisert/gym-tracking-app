@@ -10,8 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatKilos, formatVolume } from "@/lib/workout-summary";
-import type { WorkoutSummaryStats } from "@/lib/workout-summary";
+import {
+  formatKilos,
+  formatVolume,
+  type WorkoutSummaryStats,
+} from "@gymtrack/core";
 
 function setsLabel(count: number): string {
   return count === 1 ? "Satz" : "Sätze";

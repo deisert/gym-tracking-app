@@ -1,5 +1,8 @@
-import { formatWeight } from "@/lib/sets";
-import type { ExerciseRecord, RecordKind } from "@/lib/types";
+import {
+  type ExerciseRecord,
+  formatWeight,
+  type RecordKind,
+} from "@gymtrack/core";
 
 /** „Neue Rekorde" looks back this many days, today included (spec §9.7). */
 export const RECORDS_WINDOW_DAYS = 30;

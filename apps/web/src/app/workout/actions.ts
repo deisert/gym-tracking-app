@@ -3,15 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { todayInAppTimezone } from "@/lib/dates";
-import { nextPosition } from "@/lib/sets";
-import { createServerSupabase } from "@/lib/supabase/server";
-import type { ExerciseOption, SetRecord } from "@/lib/types";
 import {
   exerciseNameSchema,
+  type ExerciseOption,
+  nextPosition,
   setInputSchema,
+  type SetRecord,
+  todayInAppTimezone,
   workoutMetaSchema,
-} from "@/lib/validation";
+} from "@gymtrack/core";
+import { createServerSupabase } from "@/lib/supabase/server";
 
 /**
  * `kind` tells the caller whether retrying could ever help.

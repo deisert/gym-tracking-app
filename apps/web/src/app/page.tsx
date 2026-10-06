@@ -4,7 +4,7 @@ import { WorkoutList } from "@/components/workout/workout-list";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { countWorkoutsSince, listRecentWorkouts } from "@/lib/data/workouts";
-import { startOfWeekMonday, todayInAppTimezone } from "@/lib/dates";
+import { startOfWeekMonday, todayInAppTimezone } from "@gymtrack/core";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 /**

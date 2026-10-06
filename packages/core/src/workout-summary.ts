@@ -1,4 +1,4 @@
-import type { WorkoutExerciseDetail } from "@/lib/types";
+import type { WorkoutExerciseDetail } from "./types";
 
 /** One line of the end-of-workout summary: an exercise, its sets and its load. */
 export type ExerciseSummary = {

@@ -14,8 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { filterExercises } from "@/lib/exercise-search";
-import type { ExercisePickerOption } from "@/lib/exercise-search";
+import { type ExercisePickerOption, filterExercises } from "@gymtrack/core";
 
 export function ExercisePicker({
   workoutId,

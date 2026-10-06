@@ -7,7 +7,7 @@ import {
   sumByDay,
   trainingDayCount,
 } from "@/lib/dashboard-heatmap";
-import type { DayStat } from "@/lib/types";
+import type { DayStat } from "@gymtrack/core";
 
 const TODAY = "2026-09-23"; // Wednesday
 

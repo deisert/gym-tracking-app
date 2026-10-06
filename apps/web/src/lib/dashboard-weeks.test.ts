@@ -7,7 +7,7 @@ import {
   thisWeek,
   weeklyAverage,
 } from "@/lib/dashboard-weeks";
-import type { WeekStat } from "@/lib/types";
+import type { WeekStat } from "@gymtrack/core";
 
 // Wednesday. Its week starts Monday 2026-09-21; the last completed week is 2026-09-14.
 const TODAY = "2026-09-23";

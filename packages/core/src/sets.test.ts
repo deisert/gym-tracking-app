@@ -6,8 +6,8 @@ import {
   ghostForPosition,
   nextActiveKey,
   nextPosition,
-} from "@/lib/sets";
-import type { LastPerformance, SetRecord } from "@/lib/types";
+} from "./sets";
+import type { LastPerformance, SetRecord } from "./types";
 
 function set(position: number, weight_kg: number, reps: number, is_warmup = false): SetRecord {
   return { id: `s${position}`, position, weight_kg, reps, is_warmup, unclean_reps: 0, is_dropset: false };

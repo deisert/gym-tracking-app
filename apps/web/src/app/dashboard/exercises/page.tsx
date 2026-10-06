@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { BlockError } from "@/components/dashboard/section";
 import { getExerciseOverview } from "@/lib/data/exercise-detail";
-import { formatPerformedOnInYear, todayInAppTimezone } from "@/lib/dates";
+import { formatPerformedOnInYear, todayInAppTimezone } from "@gymtrack/core";
 
 /**
  * „Alle Übungen“: the way into every exercise page, not only the top five

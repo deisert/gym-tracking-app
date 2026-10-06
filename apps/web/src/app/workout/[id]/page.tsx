@@ -6,9 +6,11 @@ import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { WorkoutHeader } from "@/components/workout/workout-header";
 import { getLastPerformances, listExercises } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
-import { formatPerformedOn } from "@/lib/dates";
-import { formatSetSummary } from "@/lib/sets";
-import { summarizeWorkout } from "@/lib/workout-summary";
+import {
+  formatPerformedOn,
+  formatSetSummary,
+  summarizeWorkout,
+} from "@gymtrack/core";
 
 export default async function WorkoutPage({
   params,

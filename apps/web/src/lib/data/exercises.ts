@@ -1,8 +1,11 @@
 import "server-only";
 
-import { sortByRecency } from "@/lib/exercise-search";
-import type { ExercisePickerOption } from "@/lib/exercise-search";
-import type { LastPerformance, SetRecord } from "@/lib/types";
+import {
+  type ExercisePickerOption,
+  type LastPerformance,
+  type SetRecord,
+  sortByRecency,
+} from "@gymtrack/core";
 import { createServerSupabase } from "@/lib/supabase/server";
 
 type RawSet = {

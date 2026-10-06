@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { updateWorkoutMeta } from "@/app/workout/actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { formatPerformedOn } from "@/lib/dates";
+import { formatPerformedOn } from "@gymtrack/core";
 
 type Props = {
   workoutId: string;

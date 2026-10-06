@@ -11,7 +11,7 @@ import { StartWorkoutButton } from "@/components/workout/start-workout-button";
 import { getDashboardData } from "@/lib/data/dashboard";
 import { HEATMAP_WEEKS, heatmapColumns } from "@/lib/dashboard-heatmap";
 import { currentStreak, sumTotals, thisWeek, weeklyAverage } from "@/lib/dashboard-weeks";
-import { todayInAppTimezone } from "@/lib/dates";
+import { todayInAppTimezone } from "@gymtrack/core";
 import { pickRecords } from "@/lib/records";
 
 /** Below this many trained workouts a top-5 ranking is noise (spec §2.5). */

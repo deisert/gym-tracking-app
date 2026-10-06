@@ -9,7 +9,7 @@ import {
 } from "@/components/exercise/exercise-blocks";
 import { ProgressChart } from "@/components/exercise/progress-chart";
 import { getExerciseDetail } from "@/lib/data/exercise-detail";
-import { todayInAppTimezone } from "@/lib/dates";
+import { todayInAppTimezone } from "@gymtrack/core";
 import {
   MIN_CHART_SESSIONS,
   MIN_SESSIONS_FOR_BESTS,

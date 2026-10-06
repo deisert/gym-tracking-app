@@ -5,9 +5,8 @@ import { useCallback, useRef, useState, useTransition } from "react";
 
 import { deleteWorkout } from "@/app/workout/actions";
 import { SwipeableRow, SwipeGroupProvider } from "@/components/ui/swipeable-row";
-import { formatPerformedOn } from "@/lib/dates";
+import { formatPerformedOn, type WorkoutSummary } from "@gymtrack/core";
 import { cn } from "@/lib/utils";
-import type { WorkoutSummary } from "@/lib/types";
 
 type Props = {
   workouts: WorkoutSummary[];

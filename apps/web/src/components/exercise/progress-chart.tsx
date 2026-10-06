@@ -12,7 +12,12 @@ import {
   YAxis,
 } from "recharts";
 
-import { formatPerformedOnInYear } from "@/lib/dates";
+import {
+  formatKilos,
+  formatPerformedOnInYear,
+  formatVolume,
+  formatWeight,
+} from "@gymtrack/core";
 import {
   defaultRange,
   formatMonthTick,
@@ -24,10 +29,8 @@ import {
   type ChartRange,
 } from "@/lib/exercise-detail";
 import { formatLift } from "@/lib/records";
-import { formatWeight } from "@/lib/sets";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
-import { formatKilos, formatVolume } from "@/lib/workout-summary";
 
 type MetricSpec = {
   label: string;

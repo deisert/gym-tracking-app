@@ -1,8 +1,7 @@
 import Link from "next/link";
 
-import { formatPerformedOn } from "@/lib/dates";
+import { type ExerciseRecord, formatPerformedOn } from "@gymtrack/core";
 import { formatLift, recordLabel } from "@/lib/records";
-import type { ExerciseRecord } from "@/lib/types";
 
 type Props = {
   records: ExerciseRecord[];

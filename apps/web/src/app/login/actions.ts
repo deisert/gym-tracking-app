@@ -1,7 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { authEmailSchema, authNameSchema, authPasswordSchema } from "@/lib/validation";
+import {
+  authEmailSchema,
+  authNameSchema,
+  authPasswordSchema,
+} from "@gymtrack/core";
 import { getSiteUrl } from "@/lib/site-url";
 import { createServerSupabase } from "@/lib/supabase/server";
 

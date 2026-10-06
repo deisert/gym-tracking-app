@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { GhostValue } from "@/lib/sets";
-import { formatWeight } from "@/lib/sets";
+import { formatWeight, type GhostValue } from "@gymtrack/core";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";

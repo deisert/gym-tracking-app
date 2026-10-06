@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { filterExercises, sortByRecency } from "@/lib/exercise-search";
-import type { ExercisePickerOption } from "@/lib/exercise-search";
+import { filterExercises, sortByRecency } from "./exercise-search";
+import type { ExercisePickerOption } from "./exercise-search";
 
 function option(
   name: string,

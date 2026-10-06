@@ -1,4 +1,4 @@
-import type { LastPerformance, SetRecord } from "@/lib/types";
+import type { LastPerformance, SetRecord } from "./types";
 
 export type GhostValue = { weight_kg: number; reps: number };
 

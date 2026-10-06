@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { formatLift, pickRecords, recordLabel } from "@/lib/records";
-import type { ExerciseRecord, RecordKind } from "@/lib/types";
+import type { ExerciseRecord, RecordKind } from "@gymtrack/core";
 
 function record(
   exerciseId: string,

@@ -1,7 +1,11 @@
 import "server-only";
 
 import { createServerSupabase } from "@/lib/supabase/server";
-import type { ExerciseInfo, ExerciseOverviewRow, ExerciseSetRow } from "@/lib/types";
+import type {
+  ExerciseInfo,
+  ExerciseOverviewRow,
+  ExerciseSetRow,
+} from "@gymtrack/core";
 
 /** PostgREST may hand `numeric` and `bigint` back as strings. */
 type Num = number | string;

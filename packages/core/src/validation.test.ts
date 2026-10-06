@@ -6,7 +6,7 @@ import {
   exerciseNameSchema,
   setInputSchema,
   workoutMetaSchema,
-} from "@/lib/validation";
+} from "./validation";
 
 describe("setInputSchema", () => {
   it("accepts a normal working set", () => {

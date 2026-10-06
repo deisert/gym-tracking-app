@@ -19,8 +19,7 @@ import {
   trainedSessions,
   type ChartPoint,
 } from "@/lib/exercise-detail";
-import { formatSetSummary } from "@/lib/sets";
-import type { ExerciseSetRow } from "@/lib/types";
+import { type ExerciseSetRow, formatSetSummary } from "@gymtrack/core";
 
 let nextId = 0;
 

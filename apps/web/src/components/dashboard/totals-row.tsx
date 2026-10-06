@@ -1,4 +1,4 @@
-import { formatMovedWeight } from "@/lib/workout-summary";
+import { formatMovedWeight } from "@gymtrack/core";
 
 const COUNT_FORMAT = new Intl.NumberFormat("de-DE");
 

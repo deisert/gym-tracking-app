@@ -7,8 +7,15 @@ import type { ActionFailureKind } from "@/app/workout/actions";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
 import { SwipeGroupProvider } from "@/components/ui/swipeable-row";
-import { formatSetExtras, formatWeight, ghostForPosition, nextActiveKey, type GhostValue } from "@/lib/sets";
-import type { LastPerformance, SetRecord } from "@/lib/types";
+import {
+  formatSetExtras,
+  formatWeight,
+  ghostForPosition,
+  type GhostValue,
+  type LastPerformance,
+  nextActiveKey,
+  type SetRecord,
+} from "@gymtrack/core";
 
 /** How long a successful save keeps its check before the row goes quiet again. */
 const SAVED_CHECK_MS = 1000;

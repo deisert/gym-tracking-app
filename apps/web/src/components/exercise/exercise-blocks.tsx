@@ -2,7 +2,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { formatMonthYear, formatPerformedOnInYear } from "@/lib/dates";
+import {
+  type DatedLift,
+  type ExerciseInfo,
+  type ExerciseSession,
+  formatMonthYear,
+  formatPerformedOnInYear,
+  formatWeight,
+} from "@gymtrack/core";
 import {
   formatLastTrained,
   formatSessionExtras,
@@ -11,8 +18,6 @@ import {
   type RepRow,
 } from "@/lib/exercise-detail";
 import { formatLift } from "@/lib/records";
-import { formatWeight } from "@/lib/sets";
-import type { DatedLift, ExerciseInfo, ExerciseSession } from "@/lib/types";
 
 /** "100 × 3" — the tile's second line already says kg. */
 function shortLift(lift: DatedLift): string {
