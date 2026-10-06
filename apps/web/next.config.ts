@@ -11,6 +11,20 @@ const nextConfig: NextConfig = {
     // never lose a logged set to bad gym reception.
     useOffline: true,
   },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          // Never cache the worker itself, or a broken one can never be
+          // replaced on devices that already fetched it.
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

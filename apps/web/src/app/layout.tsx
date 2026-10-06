@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { BottomTabs } from "@/components/nav/bottom-tabs";
 import { OfflineBanner } from "@/components/pwa/offline-banner";
+import { RegisterSW } from "@/components/pwa/register-sw";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -43,6 +44,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           itself, plus the home-indicator inset that viewport-fit=cover exposes. */}
       <body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <OfflineBanner />
+        <RegisterSW />
         {children}
         <BottomTabs />
       </body>
