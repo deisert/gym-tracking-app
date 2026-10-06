@@ -4,7 +4,7 @@
 
 **Goal:** Restructure the repo as an npm-workspaces monorepo with a shared `@gymtrack/core` package, then turn the existing Next.js web app into an installable, connectivity-resilient PWA that lives on an iPhone 15 Pro home screen.
 
-**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 83 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
+**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 89 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
 
 **Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 2 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
 
@@ -21,8 +21,10 @@
 - **UI copy is German.** Match the existing tone in `src/app/login/page.tsx` and `src/components/`.
 - **Theme colour is `#111317`** (the rendered value of `--background: hsl(220 15% 8%)`). Use that literal hex in manifest and viewport metadata.
 - **Node/npm:** npm workspaces requires npm 7+. One lockfile at the repo root only.
-- **Tests must stay green throughout.** The suite is **141 tests in 9 files**, measured after the dashboard landed, 2026-09-23. A task that reduces that count without deleting a behaviour is a regression.
+- **Tests must stay green throughout.** The suite is **378 tests in 17 files**, measured with `npx vitest run` on 2026-10-06 (after the dashboard, exercise detail page and notes import landed). A task that reduces that count without deleting a behaviour is a regression.
 - **`swipe-gesture.ts` stays in `apps/web`.** It has zero imports and is perfectly pure, so it looks like a `packages/core` candidate — but it is *web pointer-event* math (rubber-banding, tap slop, commit thresholds). Gesture handling on either native path is platform-native, so none of it transfers. Purity is not the criterion; portability is.
+- **`src/middleware.ts` stays a `middleware.ts`.** Next 16 deprecates it in favour of `proxy.ts` (see `01-app/03-api-reference/03-file-conventions/middleware.md`), but it still works and renaming it is unrelated to this plan. Every step below that edits "the middleware" edits `apps/web/src/middleware.ts`.
+- **The notes import is one-off tooling and stays in `apps/web`.** `src/lib/notes-import/` (7 modules, 7 test files, 200 of the tests) and `scripts/notes-import.ts` move with the app, are not extracted to `packages/core`, and keep their `@/lib/notes-import/*` imports. Only the six modules named in Task 2 are extracted.
 - **Read `node_modules/next/dist/docs/` before writing Next-specific code.** This is Next 16; APIs differ from older releases. Relevant guides: `01-app/02-guides/progressive-web-apps.md`, `01-app/02-guides/offline-support.md`, `01-app/03-api-reference/03-file-conventions/01-metadata/manifest.md`.
 
 ---
@@ -139,6 +141,7 @@ gym-tracking-app/
     .env.local, .env.example, vercel.json
     public/
     src/                        moved wholesale; lib/{types,validation,sets,dates}.ts removed in Task 2
+    scripts/notes-import.ts     moved with the app; its ../src/lib/notes-import/* imports still resolve
   packages/core/
     package.json                @gymtrack/core, exports ./src/index.ts
     tsconfig.json
@@ -146,7 +149,7 @@ gym-tracking-app/
     src/index.ts                barrel re-export
     src/{types,validation,sets,dates,exercise-search,workout-summary}.ts
     src/{validation,sets,dates,exercise-search,workout-summary}.test.ts
-                                83 of the 141 tests; swipe-gesture and the dashboard tests stay in apps/web
+                                89 of the 378 tests; everything else stays in apps/web
   supabase/                     unchanged, stays at root
   docs/                         unchanged, stays at root
 ```
@@ -193,7 +196,7 @@ Nothing but file locations changes. No import in `src/` is edited: `@/*` still r
 
 **Files:**
 - Create: `package.json` (new workspace root), `apps/web/` (destination)
-- Move: `src/`, `public/`, `next.config.ts`, `tsconfig.json`, `components.json`, `eslint.config.mjs`, `postcss.config.mjs`, `vercel.json`, `vitest.config.js`, `.env.local`, `.env.example` → `apps/web/`
+- Move: `src/`, `scripts/`, `public/`, `next.config.ts`, `tsconfig.json`, `components.json`, `eslint.config.mjs`, `postcss.config.mjs`, `vercel.json`, `vitest.config.js`, `.env.local`, `.env.example` → `apps/web/`
 - Move: `package.json` → `apps/web/package.json`
 - Modify: `.gitignore`
 - Delete: `package-lock.json` (regenerated), `.next/` (stale build output)
@@ -209,13 +212,13 @@ npm test 2>&1 | tail -5
 npx tsc --noEmit && echo "TSC CLEAN"
 ```
 
-Expected: vitest reports `Tests  141 passed (141)` across 9 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
+Expected: vitest reports `Tests  378 passed (378)` across 17 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
 
 - [ ] **Step 2: Move the app**
 
 ```bash
 mkdir -p apps/web
-git mv src public next.config.ts tsconfig.json components.json \
+git mv src scripts public next.config.ts tsconfig.json components.json \
         eslint.config.mjs postcss.config.mjs vercel.json \
         vitest.config.js package.json apps/web/
 mv .env.local .env.example apps/web/
@@ -298,7 +301,7 @@ npm run typecheck
 npm run build 2>&1 | tail -20
 ```
 
-Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 141 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
+Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 378 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
 
 - [ ] **Step 7: Verify the dev server still runs through the launch config**
 
@@ -329,6 +332,13 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > `dates.ts` gained `formatPerformedOnInYear`, `formatMonthYear` and
 > `daysBetween`; they move with it. The app now depends on `recharts`
 > (`apps/web` only).
+>
+> **Since 2026-09-24 (notes import):** `src/lib/notes-import/*` and
+> `scripts/notes-import.ts` are one-off tooling that imports none of the six
+> extracted modules (verified: its only imports are `./` siblings and `node:`
+> builtins). They stay in `apps/web` untouched; Task 1 moves `scripts/` along
+> with `src/` so the runner's `../src/lib/notes-import/*` paths keep working,
+> and `tsx` stays in the app's `devDependencies`.
 
 > **Why this is still worth doing with the native fork open.** The original
 > justification was "so the mobile app can import it" — true for React Native,
@@ -338,13 +348,13 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > 1. **Asymmetric cost.** Doing this now and later choosing Swift wastes about an
 >    hour of directory structure. *Not* doing it and later choosing React Native
 >    means migrating a shared package out from under a running second app.
-> 2. **It is right for the web app alone.** The 83 moved tests run in milliseconds
+> 2. **It is right for the web app alone.** The 89 moved tests run in milliseconds
 >    without booting Next, and the business rules live in one auditable place.
 >
 > On the Swift branch `packages/core` becomes an *executable specification*
 > rather than a dependency: the Epley formula, ghost-value index mapping, German
 > decimal formatting, Europe/Berlin date handling and validation bounds stated
-> once, with 83 tests that become the conformance checklist for a Swift port.
+> once, with 89 tests that become the conformance checklist for a Swift port.
 > That is real, and weaker than direct reuse. Execute this task either way.
 
 **Files:**
@@ -495,7 +505,7 @@ export * from "./workout-summary";
 npm test --workspace packages/core 2>&1 | tail -5
 ```
 
-Expected: PASS, `Tests  83 passed (83)` — dates 12, sets 17, validation 25, exercise-search 14, workout-summary 15. The remaining 58 are in `apps/web` (swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7). If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
+Expected: PASS, `Tests  89 passed (89)` — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15. The remaining 289 are in `apps/web` (swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200). If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
 
 - [ ] **Step 8: Point the web app at the package**
 
@@ -529,23 +539,39 @@ npm install
 
 - [ ] **Step 9: Rewrite the web app's imports**
 
-Replace every `@/lib/{types,sets,dates,validation,exercise-search,workout-summary}` specifier with `@gymtrack/core`. Verified against `24e6c2d`: **26 lines across 14 files**.
+Replace every `@/lib/{types,sets,dates,validation,exercise-search,workout-summary}` specifier with `@gymtrack/core`. Verified against `d7ace39` (2026-10-06): **60 import lines across 33 files** (29 source files, 4 test files that stay in `apps/web`). Re-run the grep below before starting; the list drifts with every feature.
 
 ```
-src/app/page.tsx                                  dates
-src/app/login/actions.ts                          validation
-src/app/workout/actions.ts                        dates, sets, types, validation
-src/app/workout/[id]/page.tsx                     dates, sets, workout-summary
-src/components/workout/end-workout-button.tsx     workout-summary ×2
-src/components/workout/exercise-card.tsx          types
-src/components/workout/exercise-picker.tsx        exercise-search ×2
-src/components/workout/set-list.tsx               sets, types
-src/components/workout/set-row.tsx                sets ×2
-src/components/workout/start-workout-button.tsx   dates
-src/components/workout/workout-header.tsx         dates
-src/components/workout/workout-list.tsx           dates, types
-src/lib/data/exercises.ts                         exercise-search ×2, types
-src/lib/data/workouts.ts                          types
+src/app/dashboard/exercises/[id]/page.tsx        dates
+src/app/dashboard/exercises/page.tsx             dates
+src/app/dashboard/page.tsx                       dates
+src/app/login/actions.ts                         validation
+src/app/page.tsx                                 dates
+src/app/workout/[id]/page.tsx                    dates, sets, workout-summary
+src/app/workout/actions.ts                       dates, sets, types, validation
+src/components/dashboard/exercise-list.tsx       dates, types
+src/components/dashboard/records-list.tsx        dates, types
+src/components/dashboard/stat-tiles.tsx          types, workout-summary
+src/components/dashboard/totals-row.tsx          workout-summary
+src/components/exercise/exercise-blocks.tsx      dates, sets, types
+src/components/exercise/progress-chart.tsx       dates, sets, workout-summary
+src/components/workout/end-workout-button.tsx    workout-summary ×2
+src/components/workout/exercise-card.tsx         types
+src/components/workout/exercise-picker.tsx       exercise-search ×2
+src/components/workout/set-list.tsx              sets, types
+src/components/workout/set-row.tsx               sets ×2
+src/components/workout/start-workout-button.tsx  dates
+src/components/workout/workout-header.tsx        dates
+src/components/workout/workout-list.tsx          dates, types
+src/lib/dashboard-heatmap.ts                     dates, workout-summary, types
+src/lib/dashboard-weeks.ts                       dates, types
+src/lib/data/dashboard.ts                        dates, types
+src/lib/data/exercise-detail.ts                  types
+src/lib/data/exercises.ts                        exercise-search ×2, types
+src/lib/data/workouts.ts                         types
+src/lib/exercise-detail.ts                       dates, sets, types
+src/lib/records.ts                               sets, types
+src/lib/{dashboard-weeks,records,exercise-detail,dashboard-heatmap}.test.ts   type/sets only (tests that stay in apps/web)
 ```
 
 Several files import from two or more modules (`workout/actions.ts` from four). Merge those into a single `@gymtrack/core` import per file rather than leaving duplicate specifiers — ESLint's `no-duplicate-imports` will otherwise flag them. Keep `import type` on the lines that have it.
@@ -553,9 +579,11 @@ Several files import from two or more modules (`workout/actions.ts` from four). 
 Mechanical first pass, then fix the duplicates by hand:
 
 ```bash
-cd apps/web && grep -rl "@/lib/\(types\|sets\|dates\|validation\|exercise-search\|workout-summary\)" src \
-  | xargs sed -i '' 's|"@/lib/\(types\|sets\|dates\|validation\|exercise-search\|workout-summary\)"|"@gymtrack/core"|g'
+cd apps/web && grep -rlZE '@/lib/(types|sets|dates|validation|exercise-search|workout-summary)"' src \
+  | xargs -0 perl -pi -e 's#"[@]/lib/(types|sets|dates|validation|exercise-search|workout-summary)"#"\@gymtrack/core"#g'
 ```
+
+`perl -pi` instead of `sed -i`: the BSD (macOS) and GNU `sed -i` flags are incompatible, `perl` behaves identically on both. Run this *after* Step 4 has moved the six modules and their tests out of `src/lib/`, so the moved files are not rewritten (they get relative imports in Step 5).
 
 - [ ] **Step 10: Verify no stale references remain**
 
@@ -574,7 +602,7 @@ npm run lint
 npm run build 2>&1 | tail -20
 ```
 
-Expected: 141 tests still pass, now split 83 in `packages/core` and 58 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
+Expected: 378 tests still pass, now split 89 in `packages/core` and 289 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
 
 - [ ] **Step 12: Verify at runtime, not just at build time**
 
@@ -744,7 +772,7 @@ git commit -m "feat(pwa): add app icons and remove scaffold assets"
 
 **Files:**
 - Create: `apps/web/src/app/manifest.ts`
-- Modify: `apps/web/src/app/layout.tsx`
+- Modify: `apps/web/src/app/layout.tsx`, `apps/web/src/middleware.ts`
 
 **Interfaces:**
 - Consumes: the PNG filenames from Task 4.
@@ -812,7 +840,21 @@ export const metadata: Metadata = {
 };
 ```
 
-- [ ] **Step 3: Verify the manifest is served correctly**
+- [ ] **Step 3: Exempt the manifest and service worker from the auth middleware**
+
+**This is not optional — without it the app is not installable.** The matcher in `middleware.ts` only skips `_next/static`, `_next/image`, `favicon.ico` and image extensions, so `/manifest.webmanifest` and `/sw.js` run through the Supabase auth check and get a `307` to `/login` whenever the request carries no session cookie. Browsers fetch the manifest without credentials by default, so even a logged-in user would get an HTML login page where the JSON manifest should be. Extend the matcher in `apps/web/src/middleware.ts` (the icon PNGs are already covered by the extension list):
+
+```ts
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+```
+
+Task 9 relies on this for `/sw.js`.
+
+- [ ] **Step 4: Verify the manifest is served correctly**
 
 ```bash
 npm run build && npm run start
@@ -821,10 +863,12 @@ npm run build && npm run start
 Then, in another shell:
 
 ```bash
-curl -s localhost:3000/manifest.webmanifest | head -20
+curl -si localhost:3000/manifest.webmanifest | head -20
 ```
 
-Expected: the JSON above, served with `content-type: application/manifest+json`. Then confirm the head tags:
+Run this **without cookies** (plain `curl`, as above). A `307`/`location: /login` means Step 3 was skipped or the matcher is wrong.
+
+Expected: `200`, the JSON above, served with `content-type: application/manifest+json`. Then confirm the head tags:
 
 ```bash
 curl -s localhost:3000/login | grep -o '<meta name="theme-color"[^>]*>\|<link rel="manifest"[^>]*>\|<link rel="apple-touch-icon"[^>]*>\|<meta name="apple-mobile-web-app-capable"[^>]*>'
@@ -832,7 +876,7 @@ curl -s localhost:3000/login | grep -o '<meta name="theme-color"[^>]*>\|<link re
 
 Expected: all four present.
 
-- [ ] **Step 4: Verify installability in the browser**
+- [ ] **Step 5: Verify installability in the browser**
 
 Open the running app in the preview browser, then check the manifest parsed without warnings:
 
@@ -842,7 +886,7 @@ await fetch('/manifest.webmanifest').then(r => r.json())
 
 Expected: the parsed object with three icons. A 404 here means the file is in the wrong directory — `manifest.ts` must sit directly in `src/app/`, not in a route group.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -1048,7 +1092,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 141 tests still passing, typecheck and lint silent.
+Expected: 378 tests still passing, typecheck and lint silent.
 
 - [ ] **Step 9: Commit**
 
@@ -1161,7 +1205,7 @@ export function magicLinkWillStrand(env: DisplayEnvironment): boolean {
 npm test --workspace packages/core 2>&1 | tail -10
 ```
 
-Expected: PASS, `Tests  87 passed (87)` — the 83 from Task 2 plus these four.
+Expected: PASS, `Tests  93 passed (93)` — the 89 from Task 2 plus these four.
 
 - [ ] **Step 5: Export it from the barrel**
 
@@ -1271,7 +1315,7 @@ export default function OfflinePage() {
 
 - [ ] **Step 2: Let `/offline` through the auth middleware**
 
-`middleware.ts` redirects every unauthenticated request to `/login`, which would make the fallback unreachable exactly when it is needed. Extend `isPublicPath`:
+`middleware.ts` redirects every unauthenticated request to `/login`, which would make the fallback unreachable exactly when it is needed. (`/sw.js` was already exempted in Task 5 Step 3 — confirm with `curl -si localhost:3000/sw.js` that it is a `200` JavaScript response, not a redirect, once Step 3 below has created the file.) Extend `isPublicPath`:
 
 ```ts
 const isPublicPath =
@@ -1442,7 +1486,7 @@ npm run typecheck
 npm run lint
 ```
 
-Expected: 145 tests passing (141 after dashboard phase 1 + 4 from Task 8), split 87 in `packages/core` and 58 in `apps/web`; typecheck and lint silent.
+Expected: 382 tests passing (378 baseline + 4 from Task 8), split 93 in `packages/core` and 289 in `apps/web`; typecheck and lint silent.
 
 - [ ] **Step 10: Commit**
 
@@ -1605,7 +1649,7 @@ native client talks to Supabase directly rather than through a re-exposed API.
 2. `supabase-swift` via Swift Package Manager: auth with the Keychain as the
    session store, PostgREST for queries, and the same deep-link scheme added to
    Supabase Auth's redirect allow list.
-3. **Port `packages/core` to Swift, using its 83 tests as the conformance
+3. **Port `packages/core` to Swift, using its 89 tests as the conformance
    checklist.** This is the concrete cost of this branch over 3A. Budget for the
    parts that are easy to get subtly wrong: the Europe/Berlin date handling
    (`localDateString` deliberately avoids `toISOString`, which is UTC), the
@@ -1628,8 +1672,8 @@ Step 6 in hand before agreeing to either.
 
 **Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
 
-**Test-count ledger** (re-measured 2026-09-23, after dashboard phase 1): **141** at baseline in 9 files — dates 12, sets 17, validation 25, exercise-search 14, workout-summary 15, swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7. Still 141 after Task 2, now split **83 in `packages/core` + 58 in `apps/web`** (swipe-gesture and the dashboard modules stay). **145** after Task 8 adds four. Task 9 Step 9 expects 145.
+**Test-count ledger** (re-measured 2026-10-06 with `npx vitest run`, after dashboard, exercise detail and notes import): **378** at baseline in 17 files — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15 (these five = 89, the `packages/core` set); swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200 (build-import 10, dates 18, emit-sql 11, exercise-map 77, parse-log 15, set-line 50, weights 19) (these = 289, staying in `apps/web`). Still 378 after Task 2. **382** after Task 8 adds four (93 in `packages/core`). Task 9 Step 9 expects 382. Re-measure before executing: any feature that lands first moves these numbers, and the *split* matters more than the total.
 
-Phase 3 Branch 3B cites 83 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding both the four PWA-only `magicLinkWillStrand` tests and the 58 web-gesture and dashboard tests, none of which have a Swift equivalent.
+Phase 3 Branch 3B cites 89 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding the four PWA-only `magicLinkWillStrand` tests and the 289 web-gesture, dashboard, exercise-detail and notes-import tests, none of which have a Swift equivalent.
 
 **Fork neutrality:** Tasks 1–10 name no native framework. Task 11 is a decision with a written deliverable, not code. Branches 3A and 3B are scope sketches, marked not-executable.
