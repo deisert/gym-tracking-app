@@ -362,7 +362,7 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 - Move: `apps/web/src/lib/{types,sets,dates,validation,exercise-search,workout-summary}.ts` → `packages/core/src/`
 - Move: `apps/web/src/lib/{sets,dates,validation,exercise-search,workout-summary}.test.ts` → `packages/core/src/`
 - Modify: `apps/web/next.config.ts`, `apps/web/package.json`, and the **14 files** carrying the **26 import lines** listed in Step 9
-- Delete: `apps/web/vitest.config.js`
+- Keep: `apps/web/vitest.config.js` — the 289 tests that stay in `apps/web` import via `@/…`, which needs its `vite-tsconfig-paths` plugin (executed 2026-10-06; the original plan said delete it, which would have broken them)
 
 **Interfaces:**
 - Consumes: the `apps/web` workspace from Task 1.
@@ -460,7 +460,7 @@ git mv apps/web/src/lib/sets.test.ts \
        apps/web/src/lib/exercise-search.test.ts \
        apps/web/src/lib/workout-summary.test.ts \
        packages/core/src/
-git rm apps/web/vitest.config.js
+# apps/web/vitest.config.js stays: the remaining web tests need the @/ alias.
 ```
 
 - [ ] **Step 5: Rewrite intra-package imports as relative**
