@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import { BottomTabs } from "@/components/nav/bottom-tabs";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* pb keeps the fixed tab bar from covering content: 5rem for the bar
           itself, plus the home-indicator inset that viewport-fit=cover exposes. */}
       <body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        <OfflineBanner />
         {children}
         <BottomTabs />
       </body>
