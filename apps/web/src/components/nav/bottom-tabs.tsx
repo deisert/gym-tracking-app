@@ -18,7 +18,7 @@ export function BottomTabs() {
   if (pathname.startsWith("/login")) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card">
+    <nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
       <div className="mx-auto flex w-full max-w-md">
         {TABS.map(({ href, label, Icon }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
