@@ -2,6 +2,7 @@
 
 **Date:** 2026-09-15 (revised same day: native client is now an open RN-vs-Swift fork)
 **Status:** Decided for Phases 1–2; the native client is a deferred fork
+**Revised 2026-10-06:** execution order is PWA first, monorepo second. The PWA needs nothing from `packages/core` or workspaces, so it is built and tested in the current repo layout; the monorepo (D2) runs afterwards and only if a second client looks likely. D2's justification is unchanged — only its timing moved.
 **Plan:** `docs/superpowers/plans/2026-09-15-monorepo-and-pwa.md`
 
 ## Problem
@@ -16,7 +17,7 @@ Swift/SwiftUI is now equally on the table**, and that choice is not yet made.
 | # | Decision | Rationale |
 | - | -------- | --------- |
 | D1 | **PWA first, native client later** | The app is already mobile-first web. Installability costs ~1 day and EUR 0/yr vs. a second codebase and a ~$99/yr Apple fee. An undecided RN-vs-Swift fork is a further reason to ship the PWA first: it buys the information needed to decide. |
-| D2 | **Monorepo now — but justified on asymmetric cost, not on code sharing** | See "The D2 re-justification" below. The original rationale assumed React Native and does not survive the Swift branch. |
+| D2 | **Monorepo — but after the PWA, justified on asymmetric cost, not on code sharing** | See "The D2 re-justification" below. The original rationale assumed React Native and does not survive the Swift branch. |
 | D3 | **npm workspaces, no Turborepo/Nx** | Two directories and one package. npm workspaces ships with the installed npm. A build orchestrator here is unjustified. |
 | D4 | **One Supabase project, one database** | This is one tenant (Dominik) with multiple clients, not multi-tenancy. Existing per-`user_id` RLS makes concurrent web + native access correct with no schema change. |
 | D5 | **The native client talks to Supabase directly; Server Actions are not an API** | Path-independent: `supabase-js` and `supabase-swift` are both first-party and both authenticate against the same RLS policies. Server Actions are a Next.js-private RPC protocol. RLS, not the actions, is the authorization boundary — so a device calling Supabase directly is exactly as safe, with no new public API surface. |

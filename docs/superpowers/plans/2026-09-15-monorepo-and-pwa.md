@@ -1,12 +1,14 @@
-# GymTrack Monorepo + Installable PWA — Implementation Plan
+# GymTrack Installable PWA, then Monorepo — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Restructure the repo as an npm-workspaces monorepo with a shared `@gymtrack/core` package, then turn the existing Next.js web app into an installable, connectivity-resilient PWA that lives on an iPhone 15 Pro home screen.
+**Goal:** Turn the existing Next.js web app into an installable, connectivity-resilient PWA that lives on an iPhone 15 Pro home screen (Phase 1), then — optionally, once the PWA has been used for real workouts — restructure the repo as an npm-workspaces monorepo with a shared `@gymtrack/core` package (Phase 2).
 
-**Architecture:** The Next.js app moves wholesale into `apps/web`. The six pure-TypeScript modules it already owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 89 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root as the single source of schema and documentation. The PWA work is additive metadata plus a narrowly-scoped service worker; no data-layer or schema change anywhere.
+**Order (revised 2026-10-06): PWA first, monorepo second.** The PWA is web-app work that needs nothing from `packages/core` or workspaces, so it ships in the current repo layout and gets tested on the phone before any restructuring. The monorepo keeps its asymmetric-cost justification (spec D2) but is no longer on the PWA's critical path: it only matters if a second client ever exists, and the PWA may make that unnecessary. Phase 2 therefore runs *after* Phase 1 and moves the finished PWA files along with everything else.
 
-**Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 2 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
+**Architecture:** *Phase 1:* additive metadata (manifest, icons, viewport), an auth-middleware matcher fix, safe-area CSS, `experimental.useOffline`, and a narrowly-scoped service worker — all in the existing `src/`, `public/` and `next.config.ts`, with no data-layer or schema change. *Phase 2:* the Next.js app moves wholesale into `apps/web`; the six pure-TypeScript modules it owns (`types`, `validation`, `sets`, `dates`, `exercise-search`, `workout-summary`) plus their 89 vitest tests move into `packages/core`, consumed as source `.ts` via `transpilePackages` — no build step. `supabase/` and `docs/` stay at the repo root.
+
+**Everything in Tasks 1–10 is native-client-agnostic.** The choice between React Native and Swift/SwiftUI is an open fork (spec D9) resolved at the Phase 3 gate, and nothing in this plan commits to either. Read the note at the head of Task 9 before executing it — the *reason* `packages/core` is worth extracting differs between the two branches, and the plan is honest about the branch where that reason is weaker.
 
 **Tech Stack:** Next.js 16.3.1 (App Router, Server Actions), React 19.2.8, Tailwind CSS v4, Supabase (`@supabase/ssr`), zod 4, vitest 1, npm workspaces, `sharp` (icon generation, dev-only).
 
@@ -24,7 +26,7 @@
 - **Tests must stay green throughout.** The suite is **378 tests in 17 files**, measured with `npx vitest run` on 2026-10-06 (after the dashboard, exercise detail page and notes import landed). A task that reduces that count without deleting a behaviour is a regression.
 - **`swipe-gesture.ts` stays in `apps/web`.** It has zero imports and is perfectly pure, so it looks like a `packages/core` candidate — but it is *web pointer-event* math (rubber-banding, tap slop, commit thresholds). Gesture handling on either native path is platform-native, so none of it transfers. Purity is not the criterion; portability is.
 - **`src/middleware.ts` stays a `middleware.ts`.** Next 16 deprecates it in favour of `proxy.ts` (see `01-app/03-api-reference/03-file-conventions/middleware.md`), but it still works and renaming it is unrelated to this plan. Every step below that edits "the middleware" edits `apps/web/src/middleware.ts`.
-- **The notes import is one-off tooling and stays in `apps/web`.** `src/lib/notes-import/` (7 modules, 7 test files, 200 of the tests) and `scripts/notes-import.ts` move with the app, are not extracted to `packages/core`, and keep their `@/lib/notes-import/*` imports. Only the six modules named in Task 2 are extracted.
+- **The notes import is one-off tooling and stays in `apps/web`.** `src/lib/notes-import/` (7 modules, 7 test files, 200 of the tests) and `scripts/notes-import.ts` move with the app, are not extracted to `packages/core`, and keep their `@/lib/notes-import/*` imports. Only the six modules named in Task 9 are extracted.
 - **Read `node_modules/next/dist/docs/` before writing Next-specific code.** This is Next 16; APIs differ from older releases. Relevant guides: `01-app/02-guides/progressive-web-apps.md`, `01-app/02-guides/offline-support.md`, `01-app/03-api-reference/03-file-conventions/01-metadata/manifest.md`.
 
 ---
@@ -41,7 +43,9 @@ workspaces needs npm 7+, so no upgrade is required. **Phases 1–2 need no
 Xcode, no Apple ID, and no Apple Developer Program** — those belong to Phase 3
 only. The whole PWA path runs on tools you already have.
 
-### Vercel (blocks Task 3; deploys stay broken until done)
+### Vercel (Phase 2 only — blocks Task 10; deploys stay broken until done)
+
+**Not needed for the PWA phase** — Phase 1 builds from the repo root exactly as today.
 
 Do this in the browser at `vercel.com/dominiks-projects-5848510f/gym-tracking-app`.
 Per project memory the Vercel MCP returns 404s for this project, so there is no
@@ -84,18 +88,18 @@ click time, so it looks like a broken login form rather than a config problem.
 Leave "Allow new users to sign up" **disabled** — that is a deliberate
 decision recorded in project memory, and nothing in this plan needs it on.
 
-### GitHub (Tasks 3 and 10)
+### GitHub (Tasks 7 and 10)
 
 `git push origin staging` and the `main` merge are yours — Claude is blocked
-from both by the permission classifier. Exact commands are in Task 3 Steps 3
-and 5.
+from both by the permission classifier. Exact commands are in Task 7 Step 1
+(PWA) and Task 10 Steps 3 and 5 (monorepo).
 
-### Your iPhone (Task 10)
+### Your iPhone (Task 7)
 
 Must be **Safari** — Chrome on iOS cannot add to the home screen. Use the
 **production** URL, not staging: staging sits behind Vercel Authentication
 (Standard Protection), which interferes with installation. Full walkthrough in
-Task 10.
+Task 7.
 
 ### What runs where, simultaneously
 
@@ -105,7 +109,7 @@ intended, not a compromise.
 
 | Environment | URL | Env vars come from | Extra setup |
 | ----------- | --- | ------------------ | ----------- |
-| Local dev | `http://127.0.0.1:3000` | `apps/web/.env.local` | redirect-list entry |
+| Local dev | `http://127.0.0.1:3000` | `.env.local` (`apps/web/.env.local` after Phase 2) | redirect-list entry |
 | Staging preview | `…-git-staging-….vercel.app` | Vercel, Preview scope | redirect-list entry |
 | Production | `gym-tracking-app-kohl.vercel.app` | Vercel, Production scope | redirect-list entry |
 | Installed PWA | *same as production* | *same deployment* | **none** |
@@ -114,7 +118,7 @@ The last row is the point worth internalising: **the installed app is not a
 fourth environment.** It is the production deployment rendered without browser
 chrome. It has no build of its own, no env vars of its own, and no deploy step
 of its own — shipping to production ships to the phone. The only thing that
-behaves differently inside it is the cookie jar, which is exactly what Task 8
+behaves differently inside it is the cookie jar, which is exactly what Task 5
 addresses.
 
 So a set logged on the phone appears in local dev on the next refresh, because
@@ -126,7 +130,7 @@ project and a different `.env.local`, and it is out of scope here.
 
 ## File Structure
 
-**After Phase 1:**
+**After Phase 2 (monorepo):**
 
 ```
 gym-tracking-app/
@@ -140,7 +144,7 @@ gym-tracking-app/
     components.json, eslint.config.mjs, postcss.config.mjs
     .env.local, .env.example, vercel.json
     public/
-    src/                        moved wholesale; lib/{types,validation,sets,dates}.ts removed in Task 2
+    src/                        moved wholesale; lib/{types,validation,sets,dates}.ts removed in Task 9
     scripts/notes-import.ts     moved with the app; its ../src/lib/notes-import/* imports still resolve
   packages/core/
     package.json                @gymtrack/core, exports ./src/index.ts
@@ -154,7 +158,7 @@ gym-tracking-app/
   docs/                         unchanged, stays at root
 ```
 
-**Added in Phase 2 (all under `apps/web/`):**
+**Added in Phase 1 (PWA; repo-root paths today, they move under `apps/web/` in Phase 2):**
 
 ```
   scripts/generate-icons.mjs    sharp rasteriser, run manually
@@ -167,18 +171,11 @@ gym-tracking-app/
   src/app/dashboard/loading.tsx
   src/app/workout/[id]/loading.tsx
   src/components/pwa/offline-banner.tsx
-  src/components/pwa/install-hint.tsx
   src/components/pwa/register-sw.tsx
+  src/lib/pwa.ts               pure display-mode/platform predicate (+ pwa.test.ts)
 ```
 
-**Added in Phase 2 (under `packages/core/`):**
-
-```
-  src/pwa.ts                    pure display-mode/platform predicate
-  src/pwa.test.ts
-```
-
-Rationale: `packages/core` holds only logic with no environment dependency, which is exactly what a future React Native app can reuse. The `pwa.ts` predicates take their inputs as arguments rather than reading `navigator`, which keeps them pure and testable — the component does the reading.
+Rationale: `src/lib/pwa.ts` stays in the app even after Phase 2. It is web-platform logic (iOS standalone display mode) with no native equivalent, so it is not a `packages/core` candidate. Its predicate takes its inputs as arguments rather than reading `navigator`, which keeps it pure and testable — the component does the reading.
 
 ---
 
@@ -188,9 +185,897 @@ Two kinds of step appear below. Steps that add **logic** are test-first: write t
 
 ---
 
-# Phase 1 — Monorepo
+# Phase 1 — Installable PWA (in the current repo layout)
 
-## Task 1: Move the Next.js app into `apps/web` under npm workspaces
+> **Paths in this phase are repo-root paths** (`src/…`, `public/…`, `next.config.ts`). The monorepo phase that follows moves them into `` wholesale; nothing here needs to change for that. Nothing in this phase touches `packages/core`.
+
+## Task 1: Generate the app icons
+
+iOS ignores the manifest's `icons` array for the home-screen glyph and uses `<link rel="apple-touch-icon">` at 180×180 — so both paths must exist. `public/` currently holds only leftover `create-next-app` SVGs; there is no icon to reuse.
+
+**Files:**
+- Create: `public/icon-source.svg`, `scripts/generate-icons.mjs`
+- Create (generated): `public/icon-192.png`, `icon-512.png`, `icon-512-maskable.png`, `apple-touch-icon.png`
+- Modify: `package.json` (add `sharp` to devDependencies)
+- Delete: `public/{file,globe,next,vercel,window}.svg`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: four PNGs at the paths above, referenced by name in Task 2.
+
+- [ ] **Step 1: Author the source glyph**
+
+Create `public/icon-source.svg` — a dumbbell in the theme's lime primary on the app background. 512×512 with the glyph inside the middle 60%, so the maskable variant survives iOS's and Android's circular crops.
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#111317"/>
+  <g stroke="#b8f43d" stroke-width="26" stroke-linecap="round" fill="none">
+    <line x1="176" y1="256" x2="336" y2="256"/>
+    <line x1="152" y1="206" x2="152" y2="306"/>
+    <line x1="360" y1="206" x2="360" y2="306"/>
+    <line x1="112" y1="226" x2="112" y2="286"/>
+    <line x1="400" y1="226" x2="400" y2="286"/>
+  </g>
+</svg>
+```
+
+`#b8f43d` is `hsl(84 85% 55%)`, the existing `--primary`.
+
+- [ ] **Step 2: Add the rasteriser dependency**
+
+```bash
+npm install --save-dev sharp
+```
+
+- [ ] **Step 3: Write the generation script**
+
+Create `scripts/generate-icons.mjs`:
+
+```js
+// Rasterises public/icon-source.svg into the PNG sizes iOS and Android need.
+// Run manually after editing the SVG: node scripts/generate-icons.mjs
+import { readFile, writeFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+import sharp from "sharp";
+
+const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
+const source = await readFile(join(publicDir, "icon-source.svg"));
+
+// apple-touch-icon must be exactly 180x180 and must not be transparent —
+// iOS composites it on a white card otherwise.
+const targets = [
+  { file: "icon-192.png", size: 192 },
+  { file: "icon-512.png", size: 512 },
+  { file: "icon-512-maskable.png", size: 512 },
+  { file: "apple-touch-icon.png", size: 180 },
+];
+
+for (const { file, size } of targets) {
+  const png = await sharp(source)
+    .resize(size, size)
+    .flatten({ background: "#111317" })
+    .png()
+    .toBuffer();
+  await writeFile(join(publicDir, file), png);
+  console.log(`wrote ${file} (${size}x${size}, ${png.length} bytes)`);
+}
+```
+
+- [ ] **Step 4: Generate and verify the dimensions**
+
+```bash
+node scripts/generate-icons.mjs
+```
+
+Expected: four `wrote …` lines. Then confirm the bytes on disk really carry those dimensions:
+
+```bash
+node -e "
+const sharp=require('sharp');
+for (const f of ['icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png']) {
+  sharp('public/'+f).metadata().then(m=>console.log(f, m.width+'x'+m.height, 'alpha='+m.hasAlpha));
+}"
+```
+
+Expected: `192x192`, `512x512`, `512x512`, `180x180`, each with `alpha=false`.
+
+- [ ] **Step 5: Remove the create-next-app leftovers**
+
+```bash
+git rm public/file.svg public/globe.svg public/next.svg public/vercel.svg public/window.svg
+```
+
+Confirm nothing referenced them:
+
+```bash
+grep -rn "file.svg\|globe.svg\|next.svg\|vercel.svg\|window.svg" src && echo "REFERENCED" || echo "UNUSED"
+```
+
+Expected: `UNUSED`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat(pwa): add app icons and remove scaffold assets"
+```
+
+---
+
+## Task 2: Web app manifest and iOS home-screen metadata
+
+**Files:**
+- Create: `src/app/manifest.ts`
+- Modify: `src/app/layout.tsx`, `src/middleware.ts`
+
+**Interfaces:**
+- Consumes: the PNG filenames from Task 1.
+- Produces: a `/manifest.webmanifest` route and the `<meta>`/`<link>` tags iOS needs. Task 3 depends on `viewportFit: "cover"` being set here.
+
+- [ ] **Step 1: Write the manifest**
+
+Create `src/app/manifest.ts`:
+
+```ts
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "GymTrack — Dein Trainings-Log",
+    short_name: "GymTrack",
+    description: "Trainings schnell und einhändig protokollieren.",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    orientation: "portrait",
+    background_color: "#111317",
+    theme_color: "#111317",
+    lang: "de",
+    icons: [
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}
+```
+
+- [ ] **Step 2: Add the viewport and Apple metadata**
+
+In `src/app/layout.tsx`, add a `Viewport` import and a `viewport` export, and extend the existing `metadata`. Do not move `themeColor` into `metadata` — in Next 16 it belongs to the `viewport` export and is a type error on `Metadata`.
+
+```tsx
+import type { Metadata, Viewport } from "next";
+
+export const viewport: Viewport = {
+  themeColor: "#111317",
+  colorScheme: "dark",
+  width: "device-width",
+  initialScale: 1,
+  // Lets the app paint into the notch and home-indicator areas. Task 3 adds
+  // the safe-area padding that keeps content out from under them.
+  viewportFit: "cover",
+};
+
+export const metadata: Metadata = {
+  title: "GymTrack",
+  description: "Dein Trainings-Log",
+  applicationName: "GymTrack",
+  appleWebApp: {
+    capable: true,
+    title: "GymTrack",
+    // The status bar area becomes part of the page, which is what makes an
+    // installed PWA look full-bleed rather than letterboxed.
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
+```
+
+- [ ] **Step 3: Exempt the manifest and service worker from the auth middleware**
+
+**This is not optional — without it the app is not installable.** The matcher in `middleware.ts` only skips `_next/static`, `_next/image`, `favicon.ico` and image extensions, so `/manifest.webmanifest` and `/sw.js` run through the Supabase auth check and get a `307` to `/login` whenever the request carries no session cookie. Browsers fetch the manifest without credentials by default, so even a logged-in user would get an HTML login page where the JSON manifest should be. Extend the matcher in `src/middleware.ts` (the icon PNGs are already covered by the extension list):
+
+```ts
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+```
+
+Task 6 relies on this for `/sw.js`.
+
+- [ ] **Step 4: Verify the manifest is served correctly**
+
+```bash
+npm run build && npm run start
+```
+
+Then, in another shell:
+
+```bash
+curl -si localhost:3000/manifest.webmanifest | head -20
+```
+
+Run this **without cookies** (plain `curl`, as above). A `307`/`location: /login` means Step 3 was skipped or the matcher is wrong.
+
+Expected: `200`, the JSON above, served with `content-type: application/manifest+json`. Then confirm the head tags:
+
+```bash
+curl -s localhost:3000/login | grep -o '<meta name="theme-color"[^>]*>\|<link rel="manifest"[^>]*>\|<link rel="apple-touch-icon"[^>]*>\|<meta name="apple-mobile-web-app-capable"[^>]*>'
+```
+
+Expected: all four present.
+
+- [ ] **Step 5: Verify installability in the browser**
+
+Open the running app in the preview browser, then check the manifest parsed without warnings:
+
+```js
+await fetch('/manifest.webmanifest').then(r => r.json())
+```
+
+Expected: the parsed object with three icons. A 404 here means the file is in the wrong directory — `manifest.ts` must sit directly in `src/app/`, not in a route group.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat(pwa): add web app manifest and iOS home-screen metadata"
+```
+
+---
+
+## Task 3: Respect the safe-area insets
+
+`viewport-fit: cover` from Task 2 means the page now extends under the notch and the home indicator. The fixed tab bar currently sits flush at `bottom-0`, so on an iPhone 15 Pro its labels land under the home indicator. This task is what stops the installed app from looking broken.
+
+**Files:**
+- Modify: `src/app/layout.tsx`, `src/components/nav/bottom-tabs.tsx`
+
+**Interfaces:**
+- Consumes: `viewportFit: "cover"` from Task 2.
+- Produces: no new exports.
+
+- [ ] **Step 1: Pad the tab bar's inner row**
+
+`bottom-tabs.tsx` still holds exactly two tabs, now `/` ("Verlauf") and `/dashboard` — the Today/History merge in `a304779` replaced one pair with another. The `TABS` array is not touched by this task and the `<nav>` element below is byte-identical to what is in the file.
+
+The `<nav>` keeps `fixed inset-x-0 bottom-0` so its background still bleeds to the screen edge; the padding goes on the inner row so the touch targets move up but the colour does not stop short:
+
+```tsx
+<nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
+```
+
+- [ ] **Step 2: Extend the body's bottom padding by the same inset**
+
+In `layout.tsx`, the existing `pb-20` reserves 5rem for the tab bar but does not know about the indicator. Replace it:
+
+```tsx
+{/* pb keeps the fixed tab bar from covering content: 5rem for the bar
+    itself, plus the home-indicator inset that viewport-fit=cover exposes. */}
+<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+```
+
+- [ ] **Step 3: Verify the computed padding resolves**
+
+Run the dev server, open the app, and read the computed values:
+
+```js
+[getComputedStyle(document.body).paddingBottom,
+ getComputedStyle(document.querySelector('nav')).paddingBottom]
+```
+
+Expected on a desktop browser: `["80px", "0px"]` — `env()` resolves to `0` with no notch, which is the correct no-op. The value that matters is that it is **not** an empty string or `auto`; either of those means Tailwind did not emit the arbitrary value and the class name has a typo.
+
+- [ ] **Step 4: Verify in an emulated iPhone viewport**
+
+Resize the preview to the mobile preset, reload, and screenshot. The tab bar labels must be fully visible and horizontally centred, with the bar's background still reaching the bottom edge of the screen.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "fix(pwa): keep the tab bar clear of the home indicator"
+```
+
+---
+
+## Task 4: Offline-aware UI and automatic Server Action retry
+
+Next 16 ships `experimental.useOffline`: a Server Action whose fetch fails on a dead connection no longer rejects — it stays pending and re-runs when connectivity returns. That is exactly the gym-basement case `CONCEPT.md` §2.8 describes, without building a sync engine.
+
+**This does not replace the existing retry logic in `set-list.tsx`.** The flag intercepts *transport* failures. An action that returns `{ ok: false, kind: "transient" }` is a *successful* HTTP request carrying a database failure, and `set-list.tsx` is still the only thing that handles it. Do not delete that code.
+
+**Files:**
+- Modify: `next.config.ts`, `src/app/layout.tsx`
+- Create: `src/components/pwa/offline-banner.tsx`, `src/app/loading.tsx`, `src/app/dashboard/loading.tsx`, `src/app/workout/[id]/loading.tsx`
+
+**Interfaces:**
+- Consumes: nothing. `next.config.ts` is currently an empty config object; the `experimental` block is the first thing added to it.
+- Produces: `<OfflineBanner />`, a client component taking no props.
+
+- [ ] **Step 1: Enable the flag**
+
+In `next.config.ts`, add the `experimental` block to the (currently empty) config object:
+
+```ts
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  experimental: {
+    // Failed navigations and Server Actions stay pending and retry when the
+    // connection returns, instead of rejecting. See CONCEPT.md §2.8 —
+    // never lose a logged set to bad gym reception.
+    useOffline: true,
+  },
+};
+
+export default nextConfig;
+```
+
+- [ ] **Step 2: Write the offline banner**
+
+Create `src/components/pwa/offline-banner.tsx`:
+
+```tsx
+"use client";
+
+import { useOffline } from "next/offline";
+
+/**
+ * `useOffline` is more trustworthy than `navigator.onLine`, which reports true
+ * for a phone on gym WiFi that has no route upstream. It flips on a failed
+ * framework fetch as well as on the browser's `offline` event.
+ */
+export function OfflineBanner() {
+  const isOffline = useOffline();
+
+  if (!isOffline) return null;
+
+  return (
+    <div
+      role="status"
+      className="fixed inset-x-0 top-0 z-50 bg-destructive px-4 py-2 text-center text-sm text-foreground"
+      style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
+    >
+      Offline – Eingaben werden gesendet, sobald du wieder Empfang hast.
+    </div>
+  );
+}
+```
+
+Note the colour pairing: `globals.css` maps `--color-destructive` inside its `@theme inline` block, but **not** `--color-destructive-foreground`. In Tailwind v4 an unmapped token generates no class, so `text-destructive-foreground` would silently produce unstyled text. `text-foreground` is mapped and reads correctly on the red — use it.
+
+- [ ] **Step 3: Mount it in the root layout**
+
+In `layout.tsx`, import and render it as the first child of `<body>`, above `{children}`:
+
+```tsx
+import { OfflineBanner } from "@/components/pwa/offline-banner";
+```
+
+```tsx
+<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+  <OfflineBanner />
+  {children}
+  <BottomTabs />
+</body>
+```
+
+- [ ] **Step 4: Add the loading shells the retry needs**
+
+The docs are explicit: offline navigation only works into a route whose shell has been prefetched, and `loading.tsx` is what defines that shell without adopting Cache Components. Create three files.
+
+`src/app/loading.tsx`:
+
+```tsx
+export default function Loading() {
+  return (
+    <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
+      <div className="h-8 w-40 animate-pulse rounded bg-card" />
+      <div className="mt-4 h-24 animate-pulse rounded bg-card" />
+    </main>
+  );
+}
+```
+
+`src/app/dashboard/loading.tsx` and `src/app/workout/[id]/loading.tsx`: same content. Duplicating eight lines is cheaper here than a shared component, and each route is free to diverge later.
+
+There is no `/history` route. `a304779` merged Today and History into the single Verlauf screen at `/`, and `/dashboard` took the second tab. The three routes worth a shell are `/`, `/dashboard` and `/workout/[id]`; `/login` needs none, since it is never reached by a soft navigation from inside the app.
+
+- [ ] **Step 5: Verify the flag took effect**
+
+The docs warn that dev mode is not a reliable reference for offline behaviour — build and start for real:
+
+```bash
+npm run build && npm run start
+```
+
+Expected: the build log shows no unknown-option warning for `experimental.useOffline`. A warning here means the key is misspelled or this Next version predates the flag — check `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/useOffline.md` exists before debugging further.
+
+- [ ] **Step 6: Verify the banner appears and the retry works**
+
+With the production server running, log in and open a workout. Then, in the preview browser:
+
+```js
+window.dispatchEvent(new Event('offline'))
+```
+
+Expected: the German offline banner appears at the top within a second.
+
+Now the real test. Put the browser in offline mode via DevTools (not just the event), type a set, and submit it. Expected: the row stays in its pending state and does **not** show the `Speichern fehlgeschlagen` error. Restore connectivity. Expected: the set commits on its own, with no tap from you, and the banner disappears.
+
+- [ ] **Step 7: Confirm the existing retry path is untouched**
+
+```bash
+grep -c "transient" src/components/workout/set-list.tsx src/app/workout/actions.ts
+```
+
+Expected: non-zero for both. If either is zero, the `kind: "transient"` handling was deleted — restore it.
+
+- [ ] **Step 8: Run the full suite**
+
+```bash
+npm test 2>&1 | tail -5
+npx tsc --noEmit
+npm run lint
+```
+
+Expected: 378 tests still passing, typecheck and lint silent.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add -A
+git commit -m "feat(pwa): retry blocked requests and surface offline state"
+```
+
+---
+
+## Task 5: Warn about magic links inside the installed app
+
+> **Scope reduced after re-checking the tree.** This task was written to reorder
+> the login forms so password came first inside standalone mode. **That is
+> already done** — commit `0c4b1b4` made password the default for both forms,
+> and `auth-card.tsx` says so in its own comment: *"Password is the default for
+> both forms; magic link is the secondary, passwordless fallback."* Both
+> `signupUsePassword` and `loginUsePassword` initialise to `true` unless an
+> error arrived from the magic path itself.
+>
+> The hazard is therefore already mitigated for the default path: you no longer
+> reach for a magic link without deliberately switching to it. What remains is
+> the narrow case — you *do* switch to the magic sub-form while running as an
+> installed app, and get stranded with no visible cause. This task adds a
+> warning there and nothing else.
+>
+> **It is legitimate to skip this task entirely.** It buys one sentence of
+> explanation for a path you have to go out of your way to reach. Decide before
+> executing rather than during.
+
+**Files:**
+- Create: `src/lib/pwa.ts`, `src/lib/pwa.test.ts`
+- Modify: `src/components/auth/auth-card.tsx`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces: `magicLinkWillStrand(env: DisplayEnvironment): boolean` and
+  `type DisplayEnvironment = { isIOS: boolean; isStandalone: boolean }`, both
+  exported from `@/lib/pwa`.
+
+The predicate takes its inputs as an argument rather than reading `navigator`
+itself. That keeps it pure, keeps the module free of DOM types so it runs under vitest's node environment,
+and lets the component do the reading. It deliberately lives in the app, not in
+`packages/core`: it is web-platform logic with no native equivalent.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `src/lib/pwa.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { magicLinkWillStrand } from "./pwa";
+
+describe("magicLinkWillStrand", () => {
+  it("strands the user inside an installed iOS app", () => {
+    expect(magicLinkWillStrand({ isIOS: true, isStandalone: true })).toBe(true);
+  });
+
+  it("is fine in mobile Safari, where the redirect lands in the same browser", () => {
+    expect(magicLinkWillStrand({ isIOS: true, isStandalone: false })).toBe(false);
+  });
+
+  it("is fine in an installed non-iOS app, which shares its cookie jar", () => {
+    expect(magicLinkWillStrand({ isIOS: false, isStandalone: true })).toBe(false);
+  });
+
+  it("is fine on the desktop web", () => {
+    expect(magicLinkWillStrand({ isIOS: false, isStandalone: false })).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 2: Run it and watch it fail**
+
+```bash
+npx vitest run src/lib/pwa.test.ts 2>&1 | tail -15
+```
+
+Expected: FAIL — `Failed to resolve import "./pwa"`.
+
+- [ ] **Step 3: Implement**
+
+Create `src/lib/pwa.ts`:
+
+```ts
+/** What the client knows about how it is being displayed. Passed in rather
+ *  than read here, so this module stays free of DOM globals. */
+export type DisplayEnvironment = {
+  isIOS: boolean;
+  isStandalone: boolean;
+};
+
+/**
+ * True when following a magic link would leave the user logged out.
+ *
+ * An installed iOS PWA keeps a cookie jar separate from Safari's. The link in
+ * the email opens in Safari, so the session is created there and the installed
+ * app never sees it — the user taps the link, sees "logged in", returns to the
+ * app and is still at the login screen, with nothing on screen explaining why.
+ * Other platforms share cookies between the installed app and the browser, so
+ * the round trip completes normally there.
+ */
+export function magicLinkWillStrand(env: DisplayEnvironment): boolean {
+  return env.isIOS && env.isStandalone;
+}
+```
+
+- [ ] **Step 4: Run it and watch it pass**
+
+```bash
+npx vitest run src/lib/pwa.test.ts 2>&1 | tail -10
+```
+
+Expected: PASS, `Tests  4 passed (4)`.
+
+- [ ] **Step 5: Show the warning on the magic sub-form**
+
+`auth-card.tsx` is already a `"use client"` component holding `mode`,
+`signupUsePassword` and `loginUsePassword` state, so this is an edit in place.
+
+Detection must run in an effect, not during render: it touches `navigator` and
+`matchMedia`, which do not exist during SSR, and the first render must match the
+server's HTML or React logs a hydration mismatch.
+
+```tsx
+import { useEffect, useState } from "react";
+import { magicLinkWillStrand } from "@/lib/pwa";
+
+// ...inside the component:
+const [magicStrands, setMagicStrands] = useState(false);
+
+useEffect(() => {
+  setMagicStrands(
+    magicLinkWillStrand({
+      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
+      isStandalone: window.matchMedia("(display-mode: standalone)").matches,
+    })
+  );
+}, []);
+```
+
+Render this inside each magic-link sub-form — the branches guarded by
+`!signupUsePassword` and `!loginUsePassword` — and nowhere else:
+
+```tsx
+{magicStrands && (
+  <p className="text-xs text-muted-foreground">
+    Der Link öffnet sich in Safari, nicht in dieser App. Du bleibst hier dann
+    abgemeldet – nimm lieber dein Passwort.
+  </p>
+)}
+```
+
+`useState(false)` means the server-rendered output is unchanged, so nothing
+shifts for web visitors.
+
+- [ ] **Step 5: Verify both states**
+
+Run the dev server and open `/login`. Expected: the password form, unchanged, no
+note. Switch to the magic sub-form: still no note, because a desktop browser is
+neither iOS nor standalone.
+
+Then temporarily hard-code `setMagicStrands(true)`, reload, and switch to the
+magic sub-form. Expected: the German warning appears there, and **only** there —
+not on the password form. Undo the hard-coding before committing.
+
+- [ ] **Step 5: Check the console for hydration warnings**
+
+Read the browser console. Expected: no "Hydration failed" or "Text content did
+not match" entries. Any such warning means the detection leaked into render —
+move it into the effect.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add -A
+git commit -m "feat(pwa): warn that magic links strand the installed iOS app"
+```
+
+---
+
+## Task 6: Service worker for static assets and an offline fallback
+
+Deliberately narrow. **Do not cache HTML or RSC payloads.** A cached RSC payload serves a stale workout — exactly the data you cannot afford to be wrong about mid-session — and Next's streaming responses do not survive naive `cache.put()`. Caching only content-hashed `/_next/static/*` is safe by construction: those URLs change whenever their content does.
+
+Installability does not require this task; the Next PWA guide notes install prompts work without offline support. Its value is fast repeat launches and a comprehensible screen instead of Safari's dinosaur.
+
+**Files:**
+- Create: `public/sw.js`, `src/app/offline/page.tsx`, `src/components/pwa/register-sw.tsx`
+- Modify: `src/app/layout.tsx`, `next.config.ts`, `src/middleware.ts`
+
+**Interfaces:**
+- Consumes: nothing from earlier tasks except the layout.
+- Produces: `<RegisterSW />`, a client component taking no props and rendering nothing.
+
+- [ ] **Step 1: Write the offline fallback page**
+
+Create `src/app/offline/page.tsx`. It must be fully static — no Supabase call, no `cookies()` — or it cannot be pre-cached.
+
+```tsx
+export default function OfflinePage() {
+  return (
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-6 text-center">
+      <h1 className="text-xl font-semibold">Kein Empfang</h1>
+      <p className="text-sm text-muted-foreground">
+        GymTrack braucht kurz Verbindung. Sobald du wieder Empfang hast, lädt
+        die Seite von selbst weiter.
+      </p>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 2: Let `/offline` through the auth middleware**
+
+`middleware.ts` redirects every unauthenticated request to `/login`, which would make the fallback unreachable exactly when it is needed. (`/sw.js` was already exempted in Task 2 Step 3 — confirm with `curl -si localhost:3000/sw.js` that it is a `200` JavaScript response, not a redirect, once Step 3 below has created the file.) Extend `isPublicPath`:
+
+```ts
+const isPublicPath =
+  request.nextUrl.pathname.startsWith("/login") ||
+  request.nextUrl.pathname.startsWith("/offline") ||
+  request.nextUrl.pathname.startsWith("/auth/confirm");
+```
+
+- [ ] **Step 3: Write the service worker**
+
+Create `public/sw.js`:
+
+```js
+// Scope is deliberately narrow: content-hashed build assets and the offline
+// page only. HTML and RSC payloads are never cached — a stale workout is
+// worse than no workout, and Next's streamed responses do not round-trip
+// through the Cache API intact.
+const CACHE = "gymtrack-static-v1";
+const OFFLINE_URL = "/offline";
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll([OFFLINE_URL])).then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Content-hashed and immutable: cache-first is always correct here.
+  if (url.pathname.startsWith("/_next/static/")) {
+    event.respondWith(
+      caches.match(request).then(
+        (hit) =>
+          hit ||
+          fetch(request).then((response) => {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(request, copy));
+            return response;
+          })
+      )
+    );
+    return;
+  }
+
+  // Page loads: always go to the network, fall back to the offline page only
+  // when the network is genuinely unreachable.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(OFFLINE_URL))
+    );
+  }
+});
+```
+
+- [ ] **Step 4: Write the registration component**
+
+Create `src/components/pwa/register-sw.tsx`:
+
+```tsx
+"use client";
+
+import { useEffect } from "react";
+
+/** Registers the service worker after mount. Renders nothing. */
+export function RegisterSW() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .catch((error) => console.error("service worker registration failed", error));
+  }, []);
+
+  return null;
+}
+```
+
+- [ ] **Step 5: Mount it**
+
+In `layout.tsx`, import and render `<RegisterSW />` next to `<OfflineBanner />`:
+
+```tsx
+import { RegisterSW } from "@/components/pwa/register-sw";
+```
+
+```tsx
+<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+  <OfflineBanner />
+  <RegisterSW />
+  {children}
+  <BottomTabs />
+</body>
+```
+
+- [ ] **Step 6: Send the right headers for `sw.js`**
+
+A cached service worker cannot be replaced, which makes a bad deploy permanent. Add a `headers()` block to `next.config.ts`, keeping the `experimental` block from Task 4:
+
+```ts
+const nextConfig: NextConfig = {
+  experimental: {
+    useOffline: true,
+  },
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          // Never cache the worker itself, or a broken one can never be
+          // replaced on devices that already fetched it.
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
+  },
+};
+```
+
+- [ ] **Step 7: Verify registration over HTTPS**
+
+Service workers need a secure context. `localhost` counts, but test the way the phone will see it:
+
+```bash
+npm run build && npm run start
+```
+
+In the preview browser:
+
+```js
+await navigator.serviceWorker.getRegistration().then(r => r && r.active && r.active.state)
+```
+
+Expected: `"activated"`. `undefined` means registration failed — read the console for the error thrown in Step 4's `.catch`.
+
+- [ ] **Step 8: Verify the offline fallback and that pages are not cached**
+
+Go offline in DevTools and reload. Expected: the German "Kein Empfang" page, not Safari's error page. Go back online, reload, and confirm the real page returns.
+
+Then confirm nothing dangerous was cached:
+
+```js
+await caches.open('gymtrack-static-v1').then(c => c.keys()).then(ks => ks.map(k => new URL(k.url).pathname))
+```
+
+Expected: `/offline` plus `/_next/static/...` entries only. **If any workout, dashboard, or login path appears in that list, the fetch handler is wrong — fix it before committing.** Serving a cached workout page would show stale sets.
+
+- [ ] **Step 9: Full suite**
+
+```bash
+npm test 2>&1 | tail -5
+npx tsc --noEmit
+npm run lint
+```
+
+Expected: 382 tests passing (378 baseline + 4 from Task 5); typecheck and lint silent.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add -A
+git commit -m "feat(pwa): cache static assets and serve an offline fallback"
+```
+
+---
+
+## Task 7: Install it on the iPhone 15 Pro (manual — Dominik)
+
+**Files:** none.
+
+- [ ] **Step 1: Ship to production**
+
+```bash
+git push origin staging
+```
+
+Wait for the Preview build to go green, then merge to production:
+
+```bash
+git checkout main && git merge --ff-only staging && git push origin main
+```
+
+No Vercel settings change is needed in this phase — the project still builds from the repo root. HTTPS is required for service workers and for Add to Home Screen — the Vercel production domain provides it; `localhost` will not help here. Note that staging sits behind Vercel Authentication, which interferes with installation; use the production URL.
+
+- [ ] **Step 2: Install**
+
+On the iPhone, open `gym-tracking-app-kohl.vercel.app` **in Safari** (Chrome on iOS cannot add to the home screen). Share → Add to Home Screen → Add.
+
+- [ ] **Step 3: Verify it looks installed**
+
+Launch from the home screen. Confirm all four:
+
+1. The icon is the lime dumbbell, not a screenshot of the page.
+2. There is no Safari address bar or toolbar.
+3. The tab bar labels sit clear of the home indicator.
+4. The status bar area is dark, matching the app background.
+
+- [ ] **Step 4: Verify login works in standalone**
+
+Sign in. The password form should be first, with the German note about magic links. Confirm the session survives closing and relaunching the app.
+
+- [ ] **Step 5: Verify the real-world case**
+
+At the gym, or with airplane mode on: log a set. Expected: the row sits pending without an error. Turn the connection back on. Expected: the set commits on its own. Then check the web app in a desktop browser — the same set is there, because it is the same database. That is D4 from the spec, confirmed end to end.
+
+- [ ] **Step 6: Record the outcome**
+
+Note what the PWA cannot do that you actually miss. That list, not a general preference for native, is what unlocks Phase 3.
+
+**Use it for real workouts for a while before starting Phase 2 (monorepo).** The monorepo only pays off if a second client ever exists; the PWA may make that unnecessary.
+
+---
+
+# Phase 2 — Monorepo (optional; run after the PWA has been used for real workouts)
+
+> **Prerequisite: Phase 1 is done and merged.** This phase is a pure restructure of a working PWA. Because Task 8 moves `src/`, `scripts/`, `public/` and `next.config.ts` wholesale, every PWA file moves with them. Two consequences are called out where they bite: Task 9 Step 8 must *extend* `next.config.ts`, not replace it, and `src/lib/pwa.ts` stays in the app.
+
+## Task 8: Move the Next.js app into `apps/web` under npm workspaces
 
 Nothing but file locations changes. No import in `src/` is edited: `@/*` still resolves because `src/` moves as a unit.
 
@@ -212,7 +1097,7 @@ npm test 2>&1 | tail -5
 npx tsc --noEmit && echo "TSC CLEAN"
 ```
 
-Expected: vitest reports `Tests  378 passed (378)` across 17 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
+Expected: vitest reports `Tests  382 passed (382)` across 18 files, then `TSC CLEAN`. Write the exact test count down — every later task must still reach it. If this is not green, stop and report; do not start restructuring on a red tree.
 
 - [ ] **Step 2: Move the app**
 
@@ -301,7 +1186,7 @@ npm run typecheck
 npm run build 2>&1 | tail -20
 ```
 
-Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 378 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`.
+Expected: `npm install` creates one root `package-lock.json` and a root `node_modules` with `apps/web` hoisted into it; vitest reports the same 382 passing tests as Step 1; typecheck is silent; `next build` completes with a route table including `/`, `/dashboard`, `/login`, `/workout/[id]`, `/offline` and `/manifest.webmanifest`.
 
 - [ ] **Step 7: Verify the dev server still runs through the launch config**
 
@@ -316,7 +1201,7 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 
 ---
 
-## Task 2: Extract `packages/core` and rewire the web app's imports
+## Task 9: Extract `packages/core` and rewire the web app's imports
 
 > **Since 2026-09-23 (dashboard phase 1):** `src/lib/dashboard-weeks.ts`,
 > `dashboard-heatmap.ts`, `records.ts` and `src/lib/data/dashboard.ts` stay in
@@ -336,7 +1221,7 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 > **Since 2026-09-24 (notes import):** `src/lib/notes-import/*` and
 > `scripts/notes-import.ts` are one-off tooling that imports none of the six
 > extracted modules (verified: its only imports are `./` siblings and `node:`
-> builtins). They stay in `apps/web` untouched; Task 1 moves `scripts/` along
+> builtins). They stay in `apps/web` untouched; Task 8 moves `scripts/` along
 > with `src/` so the runner's `../src/lib/notes-import/*` paths keep working,
 > and `tsx` stays in the app's `devDependencies`.
 
@@ -365,7 +1250,7 @@ git commit -m "refactor: move Next.js app into apps/web under npm workspaces"
 - Delete: `apps/web/vitest.config.js`
 
 **Interfaces:**
-- Consumes: the `apps/web` workspace from Task 1.
+- Consumes: the `apps/web` workspace from Task 8.
 - Produces: `@gymtrack/core` exporting, from `./src/index.ts`:
   - types `SetRecord`, `LastPerformance`, `ExerciseOption`, `WorkoutSummary`, `WorkoutExerciseDetail`, `WorkoutDetail`, `GhostValue`
   - `ghostForPosition(last: LastPerformance, index: number): GhostValue | null`
@@ -505,7 +1390,7 @@ export * from "./workout-summary";
 npm test --workspace packages/core 2>&1 | tail -5
 ```
 
-Expected: PASS, `Tests  89 passed (89)` — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15. The remaining 289 are in `apps/web` (swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200). If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
+Expected: PASS, `Tests  89 passed (89)` — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15. The remaining 293 are in `apps/web` (swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200). If `vitest` is not found, run `npm install` at the root first so the workspace dependency is linked.
 
 - [ ] **Step 8: Point the web app at the package**
 
@@ -516,19 +1401,17 @@ Add the dependency to `apps/web/package.json`. `*` is the npm-workspaces convent
   "@gymtrack/core": "*",
 ```
 
-Then tell Next to transpile it, since it ships as `.ts` rather than compiled JS. Replace `apps/web/next.config.ts` entirely:
+Then tell Next to transpile it, since it ships as `.ts` rather than compiled JS. **Do not replace `apps/web/next.config.ts`** — after Phase 1 it carries `experimental.useOffline` and the `/sw.js` `headers()` block. Add one key to the existing object and keep everything else:
 
 ```ts
-import type { NextConfig } from "next";
-
 const nextConfig: NextConfig = {
   // @gymtrack/core is published as raw TypeScript source (no build step),
   // so Next has to run it through its own compiler rather than assume
   // node_modules is pre-compiled JavaScript.
   transpilePackages: ["@gymtrack/core"],
+  experimental: { /* unchanged */ },
+  async headers() { /* unchanged */ },
 };
-
-export default nextConfig;
 ```
 
 Then relink:
@@ -602,7 +1485,7 @@ npm run lint
 npm run build 2>&1 | tail -20
 ```
 
-Expected: 378 tests still pass, now split 89 in `packages/core` and 289 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 1 Step 6.
+Expected: 382 tests still pass, now split 89 in `packages/core` and 293 in `apps/web`; typecheck and lint silent, build succeeds with the same route table as Task 8 Step 6.
 
 - [ ] **Step 12: Verify at runtime, not just at build time**
 
@@ -617,11 +1500,11 @@ git commit -m "refactor: extract shared logic into @gymtrack/core workspace pack
 
 ---
 
-## Task 3: Repoint Vercel at `apps/web` (manual — Dominik)
+## Task 10: Repoint Vercel at `apps/web` (manual — Dominik)
 
 Claude cannot do this: per project memory the Vercel MCP returns 404s for this project, and pushes to `main` are blocked by the permission classifier. Deploys will fail until this is done, because Vercel will look for a Next.js app at the repo root and find a workspace stub.
 
-**Files:** none in the repo. `apps/web/vercel.json` already carries `{"framework": "nextjs"}` and moved with the app in Task 1 — that is where Vercel expects it once Root Directory is set.
+**Files:** none in the repo. `apps/web/vercel.json` already carries `{"framework": "nextjs"}` and moved with the app in Task 8 — that is where Vercel expects it once Root Directory is set.
 
 - [ ] **Step 1: Change the Root Directory**
 
@@ -651,891 +1534,6 @@ git checkout main && git merge --ff-only staging && git push origin main
 
 ---
 
-# Phase 2 — Installable PWA
-
-## Task 4: Generate the app icons
-
-iOS ignores the manifest's `icons` array for the home-screen glyph and uses `<link rel="apple-touch-icon">` at 180×180 — so both paths must exist. `public/` currently holds only leftover `create-next-app` SVGs; there is no icon to reuse.
-
-**Files:**
-- Create: `apps/web/public/icon-source.svg`, `apps/web/scripts/generate-icons.mjs`
-- Create (generated): `apps/web/public/icon-192.png`, `icon-512.png`, `icon-512-maskable.png`, `apple-touch-icon.png`
-- Modify: `apps/web/package.json` (add `sharp` to devDependencies)
-- Delete: `apps/web/public/{file,globe,next,vercel,window}.svg`
-
-**Interfaces:**
-- Consumes: nothing.
-- Produces: four PNGs at the paths above, referenced by name in Task 5.
-
-- [ ] **Step 1: Author the source glyph**
-
-Create `apps/web/public/icon-source.svg` — a dumbbell in the theme's lime primary on the app background. 512×512 with the glyph inside the middle 60%, so the maskable variant survives iOS's and Android's circular crops.
-
-```svg
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" fill="#111317"/>
-  <g stroke="#b8f43d" stroke-width="26" stroke-linecap="round" fill="none">
-    <line x1="176" y1="256" x2="336" y2="256"/>
-    <line x1="152" y1="206" x2="152" y2="306"/>
-    <line x1="360" y1="206" x2="360" y2="306"/>
-    <line x1="112" y1="226" x2="112" y2="286"/>
-    <line x1="400" y1="226" x2="400" y2="286"/>
-  </g>
-</svg>
-```
-
-`#b8f43d` is `hsl(84 85% 55%)`, the existing `--primary`.
-
-- [ ] **Step 2: Add the rasteriser dependency**
-
-```bash
-npm install --save-dev --workspace apps/web sharp
-```
-
-- [ ] **Step 3: Write the generation script**
-
-Create `apps/web/scripts/generate-icons.mjs`:
-
-```js
-// Rasterises public/icon-source.svg into the PNG sizes iOS and Android need.
-// Run manually after editing the SVG: node scripts/generate-icons.mjs
-import { readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-import sharp from "sharp";
-
-const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
-const source = await readFile(join(publicDir, "icon-source.svg"));
-
-// apple-touch-icon must be exactly 180x180 and must not be transparent —
-// iOS composites it on a white card otherwise.
-const targets = [
-  { file: "icon-192.png", size: 192 },
-  { file: "icon-512.png", size: 512 },
-  { file: "icon-512-maskable.png", size: 512 },
-  { file: "apple-touch-icon.png", size: 180 },
-];
-
-for (const { file, size } of targets) {
-  const png = await sharp(source)
-    .resize(size, size)
-    .flatten({ background: "#111317" })
-    .png()
-    .toBuffer();
-  await writeFile(join(publicDir, file), png);
-  console.log(`wrote ${file} (${size}x${size}, ${png.length} bytes)`);
-}
-```
-
-- [ ] **Step 4: Generate and verify the dimensions**
-
-```bash
-cd apps/web && node scripts/generate-icons.mjs
-```
-
-Expected: four `wrote …` lines. Then confirm the bytes on disk really carry those dimensions:
-
-```bash
-cd apps/web && node -e "
-const sharp=require('sharp');
-for (const f of ['icon-192.png','icon-512.png','icon-512-maskable.png','apple-touch-icon.png']) {
-  sharp('public/'+f).metadata().then(m=>console.log(f, m.width+'x'+m.height, 'alpha='+m.hasAlpha));
-}"
-```
-
-Expected: `192x192`, `512x512`, `512x512`, `180x180`, each with `alpha=false`.
-
-- [ ] **Step 5: Remove the create-next-app leftovers**
-
-```bash
-cd apps/web && git rm public/file.svg public/globe.svg public/next.svg public/vercel.svg public/window.svg
-```
-
-Confirm nothing referenced them:
-
-```bash
-grep -rn "file.svg\|globe.svg\|next.svg\|vercel.svg\|window.svg" apps/web/src && echo "REFERENCED" || echo "UNUSED"
-```
-
-Expected: `UNUSED`.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add -A
-git commit -m "feat(pwa): add app icons and remove scaffold assets"
-```
-
----
-
-## Task 5: Web app manifest and iOS home-screen metadata
-
-**Files:**
-- Create: `apps/web/src/app/manifest.ts`
-- Modify: `apps/web/src/app/layout.tsx`, `apps/web/src/middleware.ts`
-
-**Interfaces:**
-- Consumes: the PNG filenames from Task 4.
-- Produces: a `/manifest.webmanifest` route and the `<meta>`/`<link>` tags iOS needs. Task 6 depends on `viewportFit: "cover"` being set here.
-
-- [ ] **Step 1: Write the manifest**
-
-Create `apps/web/src/app/manifest.ts`:
-
-```ts
-import type { MetadataRoute } from "next";
-
-export default function manifest(): MetadataRoute.Manifest {
-  return {
-    name: "GymTrack — Dein Trainings-Log",
-    short_name: "GymTrack",
-    description: "Trainings schnell und einhändig protokollieren.",
-    start_url: "/",
-    scope: "/",
-    display: "standalone",
-    orientation: "portrait",
-    background_color: "#111317",
-    theme_color: "#111317",
-    lang: "de",
-    icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-    ],
-  };
-}
-```
-
-- [ ] **Step 2: Add the viewport and Apple metadata**
-
-In `apps/web/src/app/layout.tsx`, add a `Viewport` import and a `viewport` export, and extend the existing `metadata`. Do not move `themeColor` into `metadata` — in Next 16 it belongs to the `viewport` export and is a type error on `Metadata`.
-
-```tsx
-import type { Metadata, Viewport } from "next";
-
-export const viewport: Viewport = {
-  themeColor: "#111317",
-  colorScheme: "dark",
-  width: "device-width",
-  initialScale: 1,
-  // Lets the app paint into the notch and home-indicator areas. Task 6 adds
-  // the safe-area padding that keeps content out from under them.
-  viewportFit: "cover",
-};
-
-export const metadata: Metadata = {
-  title: "GymTrack",
-  description: "Dein Trainings-Log",
-  applicationName: "GymTrack",
-  appleWebApp: {
-    capable: true,
-    title: "GymTrack",
-    // The status bar area becomes part of the page, which is what makes an
-    // installed PWA look full-bleed rather than letterboxed.
-    statusBarStyle: "black-translucent",
-  },
-  icons: {
-    apple: "/apple-touch-icon.png",
-  },
-};
-```
-
-- [ ] **Step 3: Exempt the manifest and service worker from the auth middleware**
-
-**This is not optional — without it the app is not installable.** The matcher in `middleware.ts` only skips `_next/static`, `_next/image`, `favicon.ico` and image extensions, so `/manifest.webmanifest` and `/sw.js` run through the Supabase auth check and get a `307` to `/login` whenever the request carries no session cookie. Browsers fetch the manifest without credentials by default, so even a logged-in user would get an HTML login page where the JSON manifest should be. Extend the matcher in `apps/web/src/middleware.ts` (the icon PNGs are already covered by the extension list):
-
-```ts
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
-```
-
-Task 9 relies on this for `/sw.js`.
-
-- [ ] **Step 4: Verify the manifest is served correctly**
-
-```bash
-npm run build && npm run start
-```
-
-Then, in another shell:
-
-```bash
-curl -si localhost:3000/manifest.webmanifest | head -20
-```
-
-Run this **without cookies** (plain `curl`, as above). A `307`/`location: /login` means Step 3 was skipped or the matcher is wrong.
-
-Expected: `200`, the JSON above, served with `content-type: application/manifest+json`. Then confirm the head tags:
-
-```bash
-curl -s localhost:3000/login | grep -o '<meta name="theme-color"[^>]*>\|<link rel="manifest"[^>]*>\|<link rel="apple-touch-icon"[^>]*>\|<meta name="apple-mobile-web-app-capable"[^>]*>'
-```
-
-Expected: all four present.
-
-- [ ] **Step 5: Verify installability in the browser**
-
-Open the running app in the preview browser, then check the manifest parsed without warnings:
-
-```js
-await fetch('/manifest.webmanifest').then(r => r.json())
-```
-
-Expected: the parsed object with three icons. A 404 here means the file is in the wrong directory — `manifest.ts` must sit directly in `src/app/`, not in a route group.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add -A
-git commit -m "feat(pwa): add web app manifest and iOS home-screen metadata"
-```
-
----
-
-## Task 6: Respect the safe-area insets
-
-`viewport-fit: cover` from Task 5 means the page now extends under the notch and the home indicator. The fixed tab bar currently sits flush at `bottom-0`, so on an iPhone 15 Pro its labels land under the home indicator. This task is what stops the installed app from looking broken.
-
-**Files:**
-- Modify: `apps/web/src/app/layout.tsx`, `apps/web/src/components/nav/bottom-tabs.tsx`
-
-**Interfaces:**
-- Consumes: `viewportFit: "cover"` from Task 5.
-- Produces: no new exports.
-
-- [ ] **Step 1: Pad the tab bar's inner row**
-
-`bottom-tabs.tsx` still holds exactly two tabs, now `/` ("Verlauf") and `/dashboard` — the Today/History merge in `a304779` replaced one pair with another. The `TABS` array is not touched by this task and the `<nav>` element below is byte-identical to what is in the file.
-
-The `<nav>` keeps `fixed inset-x-0 bottom-0` so its background still bleeds to the screen edge; the padding goes on the inner row so the touch targets move up but the colour does not stop short:
-
-```tsx
-<nav className="fixed inset-x-0 bottom-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
-```
-
-- [ ] **Step 2: Extend the body's bottom padding by the same inset**
-
-In `layout.tsx`, the existing `pb-20` reserves 5rem for the tab bar but does not know about the indicator. Replace it:
-
-```tsx
-{/* pb keeps the fixed tab bar from covering content: 5rem for the bar
-    itself, plus the home-indicator inset that viewport-fit=cover exposes. */}
-<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
-```
-
-- [ ] **Step 3: Verify the computed padding resolves**
-
-Run the dev server, open the app, and read the computed values:
-
-```js
-[getComputedStyle(document.body).paddingBottom,
- getComputedStyle(document.querySelector('nav')).paddingBottom]
-```
-
-Expected on a desktop browser: `["80px", "0px"]` — `env()` resolves to `0` with no notch, which is the correct no-op. The value that matters is that it is **not** an empty string or `auto`; either of those means Tailwind did not emit the arbitrary value and the class name has a typo.
-
-- [ ] **Step 4: Verify in an emulated iPhone viewport**
-
-Resize the preview to the mobile preset, reload, and screenshot. The tab bar labels must be fully visible and horizontally centred, with the bar's background still reaching the bottom edge of the screen.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add -A
-git commit -m "fix(pwa): keep the tab bar clear of the home indicator"
-```
-
----
-
-## Task 7: Offline-aware UI and automatic Server Action retry
-
-Next 16 ships `experimental.useOffline`: a Server Action whose fetch fails on a dead connection no longer rejects — it stays pending and re-runs when connectivity returns. That is exactly the gym-basement case `CONCEPT.md` §2.8 describes, without building a sync engine.
-
-**This does not replace the existing retry logic in `set-list.tsx`.** The flag intercepts *transport* failures. An action that returns `{ ok: false, kind: "transient" }` is a *successful* HTTP request carrying a database failure, and `set-list.tsx` is still the only thing that handles it. Do not delete that code.
-
-**Files:**
-- Modify: `apps/web/next.config.ts`, `apps/web/src/app/layout.tsx`
-- Create: `apps/web/src/components/pwa/offline-banner.tsx`, `apps/web/src/app/loading.tsx`, `apps/web/src/app/dashboard/loading.tsx`, `apps/web/src/app/workout/[id]/loading.tsx`
-
-**Interfaces:**
-- Consumes: `transpilePackages` already present in `next.config.ts` from Task 2 — extend that object, do not replace it.
-- Produces: `<OfflineBanner />`, a client component taking no props.
-
-- [ ] **Step 1: Enable the flag**
-
-In `apps/web/next.config.ts`, add the `experimental` block alongside the existing `transpilePackages`:
-
-```ts
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  transpilePackages: ["@gymtrack/core"],
-  experimental: {
-    // Failed navigations and Server Actions stay pending and retry when the
-    // connection returns, instead of rejecting. See CONCEPT.md §2.8 —
-    // never lose a logged set to bad gym reception.
-    useOffline: true,
-  },
-};
-
-export default nextConfig;
-```
-
-- [ ] **Step 2: Write the offline banner**
-
-Create `apps/web/src/components/pwa/offline-banner.tsx`:
-
-```tsx
-"use client";
-
-import { useOffline } from "next/offline";
-
-/**
- * `useOffline` is more trustworthy than `navigator.onLine`, which reports true
- * for a phone on gym WiFi that has no route upstream. It flips on a failed
- * framework fetch as well as on the browser's `offline` event.
- */
-export function OfflineBanner() {
-  const isOffline = useOffline();
-
-  if (!isOffline) return null;
-
-  return (
-    <div
-      role="status"
-      className="fixed inset-x-0 top-0 z-50 bg-destructive px-4 py-2 text-center text-sm text-foreground"
-      style={{ paddingTop: "calc(0.5rem + env(safe-area-inset-top))" }}
-    >
-      Offline – Eingaben werden gesendet, sobald du wieder Empfang hast.
-    </div>
-  );
-}
-```
-
-Note the colour pairing: `globals.css` maps `--color-destructive` inside its `@theme inline` block, but **not** `--color-destructive-foreground`. In Tailwind v4 an unmapped token generates no class, so `text-destructive-foreground` would silently produce unstyled text. `text-foreground` is mapped and reads correctly on the red — use it.
-
-- [ ] **Step 3: Mount it in the root layout**
-
-In `layout.tsx`, import and render it as the first child of `<body>`, above `{children}`:
-
-```tsx
-import { OfflineBanner } from "@/components/pwa/offline-banner";
-```
-
-```tsx
-<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
-  <OfflineBanner />
-  {children}
-  <BottomTabs />
-</body>
-```
-
-- [ ] **Step 4: Add the loading shells the retry needs**
-
-The docs are explicit: offline navigation only works into a route whose shell has been prefetched, and `loading.tsx` is what defines that shell without adopting Cache Components. Create three files.
-
-`apps/web/src/app/loading.tsx`:
-
-```tsx
-export default function Loading() {
-  return (
-    <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
-      <div className="h-8 w-40 animate-pulse rounded bg-card" />
-      <div className="mt-4 h-24 animate-pulse rounded bg-card" />
-    </main>
-  );
-}
-```
-
-`apps/web/src/app/dashboard/loading.tsx` and `apps/web/src/app/workout/[id]/loading.tsx`: same content. Duplicating eight lines is cheaper here than a shared component, and each route is free to diverge later.
-
-There is no `/history` route. `a304779` merged Today and History into the single Verlauf screen at `/`, and `/dashboard` took the second tab. The three routes worth a shell are `/`, `/dashboard` and `/workout/[id]`; `/login` needs none, since it is never reached by a soft navigation from inside the app.
-
-- [ ] **Step 5: Verify the flag took effect**
-
-The docs warn that dev mode is not a reliable reference for offline behaviour — build and start for real:
-
-```bash
-npm run build && npm run start
-```
-
-Expected: the build log shows no unknown-option warning for `experimental.useOffline`. A warning here means the key is misspelled or this Next version predates the flag — check `node_modules/next/dist/docs/01-app/03-api-reference/05-config/01-next-config-js/useOffline.md` exists before debugging further.
-
-- [ ] **Step 6: Verify the banner appears and the retry works**
-
-With the production server running, log in and open a workout. Then, in the preview browser:
-
-```js
-window.dispatchEvent(new Event('offline'))
-```
-
-Expected: the German offline banner appears at the top within a second.
-
-Now the real test. Put the browser in offline mode via DevTools (not just the event), type a set, and submit it. Expected: the row stays in its pending state and does **not** show the `Speichern fehlgeschlagen` error. Restore connectivity. Expected: the set commits on its own, with no tap from you, and the banner disappears.
-
-- [ ] **Step 7: Confirm the existing retry path is untouched**
-
-```bash
-grep -c "transient" apps/web/src/components/workout/set-list.tsx apps/web/src/app/workout/actions.ts
-```
-
-Expected: non-zero for both. If either is zero, the `kind: "transient"` handling was deleted — restore it.
-
-- [ ] **Step 8: Run the full suite**
-
-```bash
-npm test 2>&1 | tail -5
-npm run typecheck
-npm run lint
-```
-
-Expected: 378 tests still passing, typecheck and lint silent.
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add -A
-git commit -m "feat(pwa): retry blocked requests and surface offline state"
-```
-
----
-
-## Task 8: Warn about magic links inside the installed app
-
-> **Scope reduced after re-checking the tree.** This task was written to reorder
-> the login forms so password came first inside standalone mode. **That is
-> already done** — commit `0c4b1b4` made password the default for both forms,
-> and `auth-card.tsx` says so in its own comment: *"Password is the default for
-> both forms; magic link is the secondary, passwordless fallback."* Both
-> `signupUsePassword` and `loginUsePassword` initialise to `true` unless an
-> error arrived from the magic path itself.
->
-> The hazard is therefore already mitigated for the default path: you no longer
-> reach for a magic link without deliberately switching to it. What remains is
-> the narrow case — you *do* switch to the magic sub-form while running as an
-> installed app, and get stranded with no visible cause. This task adds a
-> warning there and nothing else.
->
-> **It is legitimate to skip this task entirely.** It buys one sentence of
-> explanation for a path you have to go out of your way to reach. Decide before
-> executing rather than during.
-
-**Files:**
-- Create: `packages/core/src/pwa.ts`, `packages/core/src/pwa.test.ts`
-- Modify: `packages/core/src/index.ts`, `apps/web/src/components/auth/auth-card.tsx`
-
-**Interfaces:**
-- Consumes: `@gymtrack/core` from Task 2.
-- Produces: `magicLinkWillStrand(env: DisplayEnvironment): boolean` and
-  `type DisplayEnvironment = { isIOS: boolean; isStandalone: boolean }`, both
-  exported from `@gymtrack/core`.
-
-The predicate takes its inputs as an argument rather than reading `navigator`
-itself. That keeps it pure, keeps `packages/core` free of DOM types per the
-Global Constraints, and lets the component do the reading.
-
-- [ ] **Step 1: Write the failing test**
-
-Create `packages/core/src/pwa.test.ts`:
-
-```ts
-import { describe, expect, it } from "vitest";
-import { magicLinkWillStrand } from "./pwa";
-
-describe("magicLinkWillStrand", () => {
-  it("strands the user inside an installed iOS app", () => {
-    expect(magicLinkWillStrand({ isIOS: true, isStandalone: true })).toBe(true);
-  });
-
-  it("is fine in mobile Safari, where the redirect lands in the same browser", () => {
-    expect(magicLinkWillStrand({ isIOS: true, isStandalone: false })).toBe(false);
-  });
-
-  it("is fine in an installed non-iOS app, which shares its cookie jar", () => {
-    expect(magicLinkWillStrand({ isIOS: false, isStandalone: true })).toBe(false);
-  });
-
-  it("is fine on the desktop web", () => {
-    expect(magicLinkWillStrand({ isIOS: false, isStandalone: false })).toBe(false);
-  });
-});
-```
-
-- [ ] **Step 2: Run it and watch it fail**
-
-```bash
-npm test --workspace packages/core 2>&1 | tail -15
-```
-
-Expected: FAIL — `Failed to resolve import "./pwa"`.
-
-- [ ] **Step 3: Implement**
-
-Create `packages/core/src/pwa.ts`:
-
-```ts
-/** What the client knows about how it is being displayed. Passed in rather
- *  than read here, so this module stays free of DOM globals. */
-export type DisplayEnvironment = {
-  isIOS: boolean;
-  isStandalone: boolean;
-};
-
-/**
- * True when following a magic link would leave the user logged out.
- *
- * An installed iOS PWA keeps a cookie jar separate from Safari's. The link in
- * the email opens in Safari, so the session is created there and the installed
- * app never sees it — the user taps the link, sees "logged in", returns to the
- * app and is still at the login screen, with nothing on screen explaining why.
- * Other platforms share cookies between the installed app and the browser, so
- * the round trip completes normally there.
- */
-export function magicLinkWillStrand(env: DisplayEnvironment): boolean {
-  return env.isIOS && env.isStandalone;
-}
-```
-
-- [ ] **Step 4: Run it and watch it pass**
-
-```bash
-npm test --workspace packages/core 2>&1 | tail -10
-```
-
-Expected: PASS, `Tests  93 passed (93)` — the 89 from Task 2 plus these four.
-
-- [ ] **Step 5: Export it from the barrel**
-
-Add to `packages/core/src/index.ts`:
-
-```ts
-export * from "./pwa";
-```
-
-- [ ] **Step 6: Show the warning on the magic sub-form**
-
-`auth-card.tsx` is already a `"use client"` component holding `mode`,
-`signupUsePassword` and `loginUsePassword` state, so this is an edit in place.
-
-Detection must run in an effect, not during render: it touches `navigator` and
-`matchMedia`, which do not exist during SSR, and the first render must match the
-server's HTML or React logs a hydration mismatch.
-
-```tsx
-import { useEffect, useState } from "react";
-import { magicLinkWillStrand } from "@gymtrack/core";
-
-// ...inside the component:
-const [magicStrands, setMagicStrands] = useState(false);
-
-useEffect(() => {
-  setMagicStrands(
-    magicLinkWillStrand({
-      isIOS: /iPad|iPhone|iPod/.test(navigator.userAgent),
-      isStandalone: window.matchMedia("(display-mode: standalone)").matches,
-    })
-  );
-}, []);
-```
-
-Render this inside each magic-link sub-form — the branches guarded by
-`!signupUsePassword` and `!loginUsePassword` — and nowhere else:
-
-```tsx
-{magicStrands && (
-  <p className="text-xs text-muted-foreground">
-    Der Link öffnet sich in Safari, nicht in dieser App. Du bleibst hier dann
-    abgemeldet – nimm lieber dein Passwort.
-  </p>
-)}
-```
-
-`useState(false)` means the server-rendered output is unchanged, so nothing
-shifts for web visitors.
-
-- [ ] **Step 7: Verify both states**
-
-Run the dev server and open `/login`. Expected: the password form, unchanged, no
-note. Switch to the magic sub-form: still no note, because a desktop browser is
-neither iOS nor standalone.
-
-Then temporarily hard-code `setMagicStrands(true)`, reload, and switch to the
-magic sub-form. Expected: the German warning appears there, and **only** there —
-not on the password form. Undo the hard-coding before committing.
-
-- [ ] **Step 8: Check the console for hydration warnings**
-
-Read the browser console. Expected: no "Hydration failed" or "Text content did
-not match" entries. Any such warning means the detection leaked into render —
-move it into the effect.
-
-- [ ] **Step 9: Commit**
-
-```bash
-git add -A
-git commit -m "feat(pwa): warn that magic links strand the installed iOS app"
-```
-
----
-
-## Task 9: Service worker for static assets and an offline fallback
-
-Deliberately narrow. **Do not cache HTML or RSC payloads.** A cached RSC payload serves a stale workout — exactly the data you cannot afford to be wrong about mid-session — and Next's streaming responses do not survive naive `cache.put()`. Caching only content-hashed `/_next/static/*` is safe by construction: those URLs change whenever their content does.
-
-Installability does not require this task; the Next PWA guide notes install prompts work without offline support. Its value is fast repeat launches and a comprehensible screen instead of Safari's dinosaur.
-
-**Files:**
-- Create: `apps/web/public/sw.js`, `apps/web/src/app/offline/page.tsx`, `apps/web/src/components/pwa/register-sw.tsx`
-- Modify: `apps/web/src/app/layout.tsx`, `apps/web/next.config.ts`, `apps/web/src/middleware.ts`
-
-**Interfaces:**
-- Consumes: nothing from earlier tasks except the layout.
-- Produces: `<RegisterSW />`, a client component taking no props and rendering nothing.
-
-- [ ] **Step 1: Write the offline fallback page**
-
-Create `apps/web/src/app/offline/page.tsx`. It must be fully static — no Supabase call, no `cookies()` — or it cannot be pre-cached.
-
-```tsx
-export default function OfflinePage() {
-  return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-6 text-center">
-      <h1 className="text-xl font-semibold">Kein Empfang</h1>
-      <p className="text-sm text-muted-foreground">
-        GymTrack braucht kurz Verbindung. Sobald du wieder Empfang hast, lädt
-        die Seite von selbst weiter.
-      </p>
-    </main>
-  );
-}
-```
-
-- [ ] **Step 2: Let `/offline` through the auth middleware**
-
-`middleware.ts` redirects every unauthenticated request to `/login`, which would make the fallback unreachable exactly when it is needed. (`/sw.js` was already exempted in Task 5 Step 3 — confirm with `curl -si localhost:3000/sw.js` that it is a `200` JavaScript response, not a redirect, once Step 3 below has created the file.) Extend `isPublicPath`:
-
-```ts
-const isPublicPath =
-  request.nextUrl.pathname.startsWith("/login") ||
-  request.nextUrl.pathname.startsWith("/offline") ||
-  request.nextUrl.pathname.startsWith("/auth/confirm");
-```
-
-- [ ] **Step 3: Write the service worker**
-
-Create `apps/web/public/sw.js`:
-
-```js
-// Scope is deliberately narrow: content-hashed build assets and the offline
-// page only. HTML and RSC payloads are never cached — a stale workout is
-// worse than no workout, and Next's streamed responses do not round-trip
-// through the Cache API intact.
-const CACHE = "gymtrack-static-v1";
-const OFFLINE_URL = "/offline";
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll([OFFLINE_URL])).then(() => self.skipWaiting())
-  );
-});
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
-});
-
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
-
-  // Content-hashed and immutable: cache-first is always correct here.
-  if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(
-      caches.match(request).then(
-        (hit) =>
-          hit ||
-          fetch(request).then((response) => {
-            const copy = response.clone();
-            caches.open(CACHE).then((cache) => cache.put(request, copy));
-            return response;
-          })
-      )
-    );
-    return;
-  }
-
-  // Page loads: always go to the network, fall back to the offline page only
-  // when the network is genuinely unreachable.
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(OFFLINE_URL))
-    );
-  }
-});
-```
-
-- [ ] **Step 4: Write the registration component**
-
-Create `apps/web/src/components/pwa/register-sw.tsx`:
-
-```tsx
-"use client";
-
-import { useEffect } from "react";
-
-/** Registers the service worker after mount. Renders nothing. */
-export function RegisterSW() {
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker
-      .register("/sw.js", { scope: "/", updateViaCache: "none" })
-      .catch((error) => console.error("service worker registration failed", error));
-  }, []);
-
-  return null;
-}
-```
-
-- [ ] **Step 5: Mount it**
-
-In `layout.tsx`, import and render `<RegisterSW />` next to `<OfflineBanner />`:
-
-```tsx
-import { RegisterSW } from "@/components/pwa/register-sw";
-```
-
-```tsx
-<body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
-  <OfflineBanner />
-  <RegisterSW />
-  {children}
-  <BottomTabs />
-</body>
-```
-
-- [ ] **Step 6: Send the right headers for `sw.js`**
-
-A cached service worker cannot be replaced, which makes a bad deploy permanent. Add a `headers()` block to `apps/web/next.config.ts`, keeping the existing keys:
-
-```ts
-const nextConfig: NextConfig = {
-  transpilePackages: ["@gymtrack/core"],
-  experimental: {
-    useOffline: true,
-  },
-  async headers() {
-    return [
-      {
-        source: "/sw.js",
-        headers: [
-          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
-          // Never cache the worker itself, or a broken one can never be
-          // replaced on devices that already fetched it.
-          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
-        ],
-      },
-    ];
-  },
-};
-```
-
-- [ ] **Step 7: Verify registration over HTTPS**
-
-Service workers need a secure context. `localhost` counts, but test the way the phone will see it:
-
-```bash
-npm run build && npm run start
-```
-
-In the preview browser:
-
-```js
-await navigator.serviceWorker.getRegistration().then(r => r && r.active && r.active.state)
-```
-
-Expected: `"activated"`. `undefined` means registration failed — read the console for the error thrown in Step 4's `.catch`.
-
-- [ ] **Step 8: Verify the offline fallback and that pages are not cached**
-
-Go offline in DevTools and reload. Expected: the German "Kein Empfang" page, not Safari's error page. Go back online, reload, and confirm the real page returns.
-
-Then confirm nothing dangerous was cached:
-
-```js
-await caches.open('gymtrack-static-v1').then(c => c.keys()).then(ks => ks.map(k => new URL(k.url).pathname))
-```
-
-Expected: `/offline` plus `/_next/static/...` entries only. **If any workout, dashboard, or login path appears in that list, the fetch handler is wrong — fix it before committing.** Serving a cached workout page would show stale sets.
-
-- [ ] **Step 9: Full suite**
-
-```bash
-npm test 2>&1 | tail -5
-npm run typecheck
-npm run lint
-```
-
-Expected: 382 tests passing (378 baseline + 4 from Task 8), split 93 in `packages/core` and 289 in `apps/web`; typecheck and lint silent.
-
-- [ ] **Step 10: Commit**
-
-```bash
-git add -A
-git commit -m "feat(pwa): cache static assets and serve an offline fallback"
-```
-
----
-
-## Task 10: Install it on the iPhone 15 Pro (manual — Dominik)
-
-**Files:** none.
-
-- [ ] **Step 1: Ship to production**
-
-```bash
-git push origin staging
-```
-
-Merge to `main` once the Preview build is green, as in Task 3 Step 5. HTTPS is required for service workers and for Add to Home Screen — the Vercel production domain provides it; `localhost` will not help here. Note that staging sits behind Vercel Authentication, which interferes with installation; use the production URL.
-
-- [ ] **Step 2: Install**
-
-On the iPhone, open `gym-tracking-app-kohl.vercel.app` **in Safari** (Chrome on iOS cannot add to the home screen). Share → Add to Home Screen → Add.
-
-- [ ] **Step 3: Verify it looks installed**
-
-Launch from the home screen. Confirm all four:
-
-1. The icon is the lime dumbbell, not a screenshot of the page.
-2. There is no Safari address bar or toolbar.
-3. The tab bar labels sit clear of the home indicator.
-4. The status bar area is dark, matching the app background.
-
-- [ ] **Step 4: Verify login works in standalone**
-
-Sign in. The password form should be first, with the German note about magic links. Confirm the session survives closing and relaunching the app.
-
-- [ ] **Step 5: Verify the real-world case**
-
-At the gym, or with airplane mode on: log a set. Expected: the row sits pending without an error. Turn the connection back on. Expected: the set commits on its own. Then check the web app in a desktop browser — the same set is there, because it is the same database. That is D4 from the spec, confirmed end to end.
-
-- [ ] **Step 6: Record the outcome**
-
-Note what the PWA cannot do that you actually miss. That list, not a general preference for native, is what unlocks Phase 3.
-
----
-
 # Phase 3 — Native Client (gated; fork unresolved, not planned in detail)
 
 **Do not start this phase from this document,** and do not start it on either
@@ -1559,7 +1557,7 @@ codebase acquires a direction nobody argued for.
 
 - [ ] **Step 1: Write down the named deficiency**
 
-From Task 10 Step 6. One or two sentences describing what the PWA could not do
+From Task 7 Step 6. One or two sentences describing what the PWA could not do
 that you actually missed during real workouts. If this is empty, the gate has
 not opened; stop here and keep using the PWA.
 
@@ -1661,19 +1659,19 @@ native client talks to Supabase directly rather than through a re-exposed API.
 
 **The honest warning, unchanged by the fork:** a native client is a second UI to
 build and then keep in sync with the web app forever. Branch 3B adds a second
-copy of the business rules to that. Have the named deficiency from Task 10
+copy of the business rules to that. Have the named deficiency from Task 7
 Step 6 in hand before agreeing to either.
 
 ---
 
 ## Self-Review
 
-**Spec coverage:** D1 → Phases 2 and 3 ordering. D2/D3 → Tasks 1–2, with D2's revised justification reproduced at the head of Task 2. D4 → no schema change anywhere; verified in Task 10 Step 5, restated in Phase 3's shared preamble. D5 → Phase 3's shared preamble plus item 5 of both branch sketches. D6 → item 6 of both branch sketches, and Task 11 Step 4's note that the fee is not a differentiator. D7 → item 4 of both branch sketches (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 7. D9 → Task 11 end to end. Hazard 1 → largely pre-empted by `0c4b1b4`; the residual case is Task 8, which is explicitly marked skippable. Hazard 2 → Task 6. Hazard 3 → Task 7's preamble and Step 7. Hazard 4 → Task 9's preamble and Step 8. The manual Vercel and device steps are Tasks 3 and 10, both marked.
+**Spec coverage:** D1 → Phase 1 (PWA) precedes everything else. D2/D3 → Phase 2, Tasks 8–9, with D2's revised justification reproduced at the head of Task 9; the order change (PWA first) does not alter D2, only when it runs. D4 → no schema change anywhere; verified in Task 7 Step 5, restated in Phase 3's shared preamble. D5 → Phase 3's shared preamble plus item 5 of both branch sketches. D6 → item 6 of both branch sketches, and Task 11 Step 4's note that the fee is not a differentiator. D7 → item 4 of both branch sketches (parity is a Phase 3 obligation; the PWA has parity by construction, being the same app). D8 → Task 4. D9 → Task 11 end to end. Hazard 1 → largely pre-empted by `0c4b1b4`; the residual case is Task 5, which is explicitly marked skippable. Hazard 2 → Task 3. Hazard 3 → Task 4's preamble and Step 7. Hazard 4 → Task 6's preamble and Step 8. The manual device step is Task 7; the manual Vercel step is Task 10 (Phase 2 only).
 
-**Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 8 Step 3 and used with matching field names (`isIOS`, `isStandalone`) in Step 6. `@gymtrack/core` is spelled identically in Tasks 2, 7, 8 and both Phase 3 branch sketches. Cache name `gymtrack-static-v1` matches between Task 9 Step 3 and Step 8. Icon filenames match between Task 4 Step 3 and Task 5 Step 1. `transpilePackages` is introduced in Task 2 Step 8 and extended — never replaced — in Task 7 Step 1 and Task 9 Step 6.
+**Type consistency:** `DisplayEnvironment` and `magicLinkWillStrand` are defined in Task 5 Step 3 (`src/lib/pwa.ts`) and used with matching field names (`isIOS`, `isStandalone`) in Step 5. Cache name `gymtrack-static-v1` matches between Task 6 Step 3 and Step 8. Icon filenames match between Task 1 Step 3 and Task 2 Step 1. `@gymtrack/core` is spelled identically throughout Phase 2 and both Phase 3 branch sketches. `transpilePackages` is first introduced in Task 9 Step 8 — *added* to the `next.config.ts` that Tasks 4 and 6 already extended with `experimental` and `headers()`, never replacing it.
 
-**Test-count ledger** (re-measured 2026-10-06 with `npx vitest run`, after dashboard, exercise detail and notes import): **378** at baseline in 17 files — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15 (these five = 89, the `packages/core` set); swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200 (build-import 10, dates 18, emit-sql 11, exercise-map 77, parse-log 15, set-line 50, weights 19) (these = 289, staying in `apps/web`). Still 378 after Task 2. **382** after Task 8 adds four (93 in `packages/core`). Task 9 Step 9 expects 382. Re-measure before executing: any feature that lands first moves these numbers, and the *split* matters more than the total.
+**Test-count ledger** (measured 2026-10-06 with `npx vitest run`, after dashboard, exercise detail and notes import): **378** at baseline in 17 files — dates 14, sets 21, validation 25, exercise-search 14, workout-summary 15 (these five = 89, the future `packages/core` set); swipe-gesture 22, dashboard-weeks 17, dashboard-heatmap 12, records 7, exercise-detail 31, notes-import 200 (build-import 10, dates 18, emit-sql 11, exercise-map 77, parse-log 15, set-line 50, weights 19) (these = 289, staying in the app). **382 after Phase 1** (Task 5 adds four `magicLinkWillStrand` tests in `src/lib/pwa.test.ts`; Task 6 Step 9 expects 382). Phase 2 then holds 382 throughout, split **89 in `packages/core` + 293 in `apps/web`**. Re-measure before executing each phase: any feature that lands first moves these numbers, and the *split* matters more than the total.
 
-Phase 3 Branch 3B cites 89 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 2, excluding the four PWA-only `magicLinkWillStrand` tests and the 289 web-gesture, dashboard, exercise-detail and notes-import tests, none of which have a Swift equivalent.
+Phase 3 Branch 3B cites 89 tests as the Swift port's conformance checklist — the `packages/core` count at the end of Task 9, excluding the four PWA-only `magicLinkWillStrand` tests and the 289 web-gesture, dashboard, exercise-detail and notes-import tests, none of which have a Swift equivalent.
 
 **Fork neutrality:** Tasks 1–10 name no native framework. Task 11 is a decision with a written deliverable, not code. Branches 3A and 3B are scope sketches, marked not-executable.
