@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { EndWorkoutButton } from "@/components/workout/end-workout-button";
 import { ExerciseCard } from "@/components/workout/exercise-card";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
+import { ActiveSetProvider } from "@/components/workout/set-list";
 import { WorkoutHeader } from "@/components/workout/workout-header";
 import { getLastPerformances, listExercises } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
@@ -50,27 +51,33 @@ export default async function WorkoutPage({
         note={workout.note}
       />
 
-      <div className="mt-6 flex flex-col gap-4">
-        {workout.exercises.map((workoutExercise) => {
-          const lastPerformance =
-            lastPerformances.get(workoutExercise.exercise.id) ?? null;
-          const summary = lastPerformance ? formatSetSummary(lastPerformance.sets) : "";
+      <ActiveSetProvider
+        initialKey={
+          workout.exercises.flatMap((workoutExercise) => workoutExercise.sets).at(-1)?.id ?? null
+        }
+      >
+        <div className="mt-6 flex flex-col gap-4">
+          {workout.exercises.map((workoutExercise) => {
+            const lastPerformance =
+              lastPerformances.get(workoutExercise.exercise.id) ?? null;
+            const summary = lastPerformance ? formatSetSummary(lastPerformance.sets) : "";
 
-          return (
-            <ExerciseCard
-              key={workoutExercise.id}
-              workoutId={workout.id}
-              workoutExercise={workoutExercise}
-              lastPerformance={lastPerformance}
-              lastSummary={
-                lastPerformance && summary
-                  ? `${formatPerformedOn(lastPerformance.performedOn)}: ${summary}`
-                  : null
-              }
-            />
-          );
-        })}
-      </div>
+            return (
+              <ExerciseCard
+                key={workoutExercise.id}
+                workoutId={workout.id}
+                workoutExercise={workoutExercise}
+                lastPerformance={lastPerformance}
+                lastSummary={
+                  lastPerformance && summary
+                    ? `${formatPerformedOn(lastPerformance.performedOn)}: ${summary}`
+                    : null
+                }
+              />
+            );
+          })}
+        </div>
+      </ActiveSetProvider>
 
       {workout.exercises.length === 0 && (
         <p className="mt-6 text-sm text-muted-foreground">

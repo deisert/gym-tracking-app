@@ -1,6 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 
 import { addSet, deleteSet, updateSet } from "@/app/workout/actions";
 import type { ActionFailureKind } from "@/app/workout/actions";
@@ -114,6 +125,34 @@ function ghostFor(rows: DraftRow[], lastPerformance: LastPerformance, index: num
   return { weight_kg, reps };
 }
 
+/**
+ * The set the user is currently "on" — gets a persistent ring so it's
+ * visible even once focus leaves the input (user feedback 2026-08-20).
+ * Shared by every exercise card of a workout, so only one row in the whole
+ * workout is ringed rather than one per card.
+ */
+const ActiveSetContext = createContext<
+  [string | null, Dispatch<SetStateAction<string | null>>] | null
+>(null);
+
+/** `initialKey` should be the workout's last set — the one most likely being worked on. */
+export function ActiveSetProvider({
+  initialKey,
+  children,
+}: {
+  initialKey: string | null;
+  children: ReactNode;
+}) {
+  const state = useState(initialKey);
+  return <ActiveSetContext.Provider value={state}>{children}</ActiveSetContext.Provider>;
+}
+
+function useActiveSet() {
+  const state = useContext(ActiveSetContext);
+  if (!state) throw new Error("SetList must be rendered inside an ActiveSetProvider");
+  return state;
+}
+
 type Props = {
   workoutId: string;
   workoutExerciseId: string;
@@ -125,16 +164,9 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
   const [rows, setRowsState] = useState<DraftRow[]>(() => sets.map(toDraft));
   const [, startTransition] = useTransition();
 
-  /**
-   * The set the user is currently "on" — gets a persistent ring so it's
-   * visible even once focus leaves the input (user feedback 2026-08-20).
-   * Defaults to the last row (the one most likely being worked on), moves to
-   * whichever row is focused, and falls back sensibly when that row is
-   * deleted (see `nextActiveKey`).
-   */
-  const [activeKey, setActiveKey] = useState<string | null>(
-    () => (rows.length > 0 ? rows[rows.length - 1].key : null)
-  );
+  // Moves to whichever row is focused or added, and falls back sensibly when
+  // that row is deleted (see `nextActiveKey`).
+  const [activeKey, setActiveKey] = useActiveSet();
 
   /**
    * A mirror of `rows` that callbacks can read synchronously.
@@ -345,7 +377,8 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
 
   function addRow() {
     draftSeqRef.current += 1;
-    const key = `draft-${draftSeqRef.current}`;
+    // Prefixed so drafts stay unique across cards — the active key is workout-wide.
+    const key = `${workoutExerciseId}-draft-${draftSeqRef.current}`;
     setRows((current) => [
       ...current,
       {
