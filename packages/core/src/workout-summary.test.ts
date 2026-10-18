@@ -12,7 +12,7 @@ function exercise(id: string, name: string, sets: SetRecord[]): WorkoutExerciseD
     id,
     position: 0,
     note: null,
-    exercise: { id: `e-${id}`, name },
+    exercise: { id: `e-${id}`, name, note: null },
     sets,
   };
 }

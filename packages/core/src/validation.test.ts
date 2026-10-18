@@ -4,6 +4,7 @@ import {
   authNameSchema,
   authPasswordSchema,
   exerciseNameSchema,
+  exerciseUpdateSchema,
   setInputSchema,
   workoutMetaSchema,
 } from "./validation";
@@ -132,5 +133,26 @@ describe("workoutMetaSchema", () => {
     expect(
       workoutMetaSchema.safeParse({ performed_on: "2026-13-01", category: null, note: null }).success
     ).toBe(false);
+  });
+});
+
+describe("exerciseUpdateSchema", () => {
+  it("trims name and note", () => {
+    const result = exerciseUpdateSchema.safeParse({ name: "  Latzug ", note: " Griff eng " });
+    expect(result.success && result.data).toEqual({ name: "Latzug", note: "Griff eng" });
+  });
+
+  it("accepts a null note", () => {
+    expect(exerciseUpdateSchema.safeParse({ name: "Latzug", note: null }).success).toBe(true);
+  });
+
+  it("rejects an empty name", () => {
+    expect(exerciseUpdateSchema.safeParse({ name: "   ", note: null }).success).toBe(false);
+  });
+
+  it("rejects a note over 2000 characters", () => {
+    expect(exerciseUpdateSchema.safeParse({ name: "Latzug", note: "x".repeat(2001) }).success).toBe(
+      false
+    );
   });
 });

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import {
   exerciseNameSchema,
+  exerciseUpdateSchema,
   type ExerciseOption,
   nextPosition,
   setInputSchema,
@@ -233,6 +234,52 @@ export async function findOrCreateExercise(
   }
 
   return { ok: true, data };
+}
+
+const NAME_TAKEN = "Es gibt schon eine Übung mit diesem Namen.";
+
+/**
+ * Renames an exercise and sets its setup note — for every workout, since the
+ * library entry is shared. A name another exercise already has (any case) is
+ * refused rather than merged, for the same identity reason as findOrCreateExercise.
+ */
+export async function updateExercise(
+  exerciseId: string,
+  input: unknown
+): Promise<ActionResult<null>> {
+  const parsed = exerciseUpdateSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: "Name darf nicht leer sein (höchstens 80 Zeichen), Notiz höchstens 2000 Zeichen.",
+      kind: "validation",
+    };
+  }
+  const { name, note } = parsed.data;
+
+  const supabase = await createServerSupabase();
+  const { data: clash } = await supabase
+    .from("exercises")
+    .select("id")
+    // Escaped so "%" or "_" in a name match literally instead of as wildcards.
+    .ilike("name", name.replace(/[\\%_]/g, "\\$&"))
+    .neq("id", exerciseId)
+    .limit(1);
+  if (clash && clash.length > 0) return { ok: false, error: NAME_TAKEN, kind: "validation" };
+
+  const { data, error } = await supabase
+    .from("exercises")
+    .update({ name, note: note || null })
+    .eq("id", exerciseId)
+    .select("id");
+
+  // 23505: the exact-match unique index caught a rename that raced the check above.
+  if (error?.code === "23505") return { ok: false, error: NAME_TAKEN, kind: "validation" };
+  if (error || !data || data.length === 0) return { ok: false, error: SAVE_FAILED };
+
+  // The name shows on every page (history, dashboard, records), so refresh them all.
+  revalidatePath("/", "layout");
+  return { ok: true, data: null };
 }
 
 export async function addSet(
