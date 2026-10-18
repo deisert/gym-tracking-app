@@ -37,7 +37,7 @@ export type WorkoutExerciseDetail = {
   id: string;
   position: number;
   note: string | null;
-  exercise: { id: string; name: string };
+  exercise: ExerciseOption;
   sets: SetRecord[];
 };
 

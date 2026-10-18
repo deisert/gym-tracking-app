@@ -23,7 +23,7 @@ type RawWorkoutExercise = {
   id: string;
   position: number;
   note: string | null;
-  exercises: { id: string; name: string } | null;
+  exercises: { id: string; name: string; note: string | null } | null;
   sets: RawSet[] | null;
 };
 
@@ -56,7 +56,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
       `id, performed_on, category, note,
        workout_exercises (
          id, position, note,
-         exercises ( id, name ),
+         exercises ( id, name, note ),
          sets ( id, position, weight_kg, reps, is_warmup, unclean_reps, is_dropset )
        )`
     )
@@ -77,7 +77,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
       id: we.id,
       position: we.position,
       note: we.note,
-      exercise: { id: we.exercises!.id, name: we.exercises!.name },
+      exercise: we.exercises!,
       sets: (we.sets ?? []).map(toSetRecord).sort((a, b) => a.position - b.position),
     }))
     .sort((a, b) => a.position - b.position);

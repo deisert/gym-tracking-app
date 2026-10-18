@@ -27,6 +27,12 @@ export type SetInput = z.infer<typeof setInputSchema>;
 
 export const exerciseNameSchema = z.string().trim().min(1).max(80);
 
+// The note is the exercise's standing setup (grip, seat position), not a per-session remark.
+export const exerciseUpdateSchema = z.object({
+  name: exerciseNameSchema,
+  note: z.string().trim().max(2000).nullable(),
+});
+
 // Auth: email/password is the default signup path; magic link stays available
 // as a secondary, passwordless option (CONCEPT.md open question #1).
 export const authEmailSchema = z.string().trim().toLowerCase().email().max(255);
