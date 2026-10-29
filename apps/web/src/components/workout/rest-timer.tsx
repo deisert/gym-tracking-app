@@ -56,20 +56,28 @@ export function RestTimerProvider({
   // `start` is called from `SetList.commit`, which must not be rebuilt on
   // every toggle — so it reads the switch from a ref instead of closing over it.
   const enabledRef = useRef(enabled);
+  // The last value the server acknowledged. A failed toggle reverts to this, not
+  // to the value before the tap: with two toggles in flight the latter is stale.
+  const confirmedRef = useRef(initialEnabled);
 
   const setEnabled = useCallback(
     (next: boolean) => {
-      const previous = enabledRef.current;
       enabledRef.current = next;
       setEnabledState(next);
       setError(null);
       if (!next) setEndsAt(null);
 
       startTransition(async () => {
-        const result = await setRestTimerEnabled(workoutId, next);
-        if (!result.ok) {
-          enabledRef.current = previous;
-          setEnabledState(previous);
+        // A network failure makes the action throw rather than return `ok: false`.
+        const result = await setRestTimerEnabled(workoutId, next).catch(() => ({
+          ok: false as const,
+          error: "Speichern fehlgeschlagen.",
+        }));
+        if (result.ok) {
+          confirmedRef.current = next;
+        } else {
+          enabledRef.current = confirmedRef.current;
+          setEnabledState(confirmedRef.current);
           setError(result.error);
         }
       });
@@ -123,12 +131,17 @@ export function RestTimerToggle() {
 
 /** The countdown, pinned above the tab bar while one runs. */
 export function RestTimerBar() {
-  const { endsAt, extend, skip } = useRestTimer();
+  const { endsAt } = useRestTimer();
+  // Keyed by the end time, so a (re)start or extension mounts with a fresh clock
+  // reading instead of flashing the `now` of the previous countdown.
+  return endsAt === null ? null : <Countdown key={endsAt} endsAt={endsAt} />;
+}
+
+function Countdown({ endsAt }: { endsAt: number }) {
+  const { extend, skip } = useRestTimer();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (endsAt === null) return;
-
     const tick = () => {
       const current = Date.now();
       if (current >= endsAt) {
@@ -139,16 +152,9 @@ export function RestTimerBar() {
       setNow(current);
     };
 
-    // Don't wait a whole tick for the first correct reading after a (re)start.
-    const first = setTimeout(tick, 0);
     const timer = setInterval(tick, TICK_MS);
-    return () => {
-      clearTimeout(first);
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [endsAt, skip]);
-
-  if (endsAt === null) return null;
 
   return (
     <>
