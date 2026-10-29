@@ -15,6 +15,8 @@ type Props = {
   /** "+3 unsauber · Dropset" for imported sets; null when there is nothing to say. */
   extras: string | null;
   ghost: GhostValue | null;
+  /** "Neuer Rekord · Gewicht 85 kg (vorher 80)", or null when this set is no record. */
+  recordText: string | null;
   status: SaveStatus;
   /** German failure copy from the server, rendered beneath the row. */
   error: string | null;
@@ -45,6 +47,7 @@ export function SetRow({
   isWarmup,
   extras,
   ghost,
+  recordText,
   status,
   error,
   canRetry,
@@ -168,6 +171,17 @@ export function SetRow({
         </div>
 
         {extras && <p className="pl-8 text-sm text-muted-foreground">{extras}</p>}
+        {recordText && (
+          // --warning is the design system's PR highlight. Icon + words, so it
+          // never rests on colour alone; the pulse is skipped for reduced motion.
+          <p
+            role="status"
+            className="pl-8 text-sm font-medium text-[hsl(38_92%_55%)] motion-safe:animate-[pulse_0.4s_ease-out_1]"
+          >
+            <span aria-hidden>🏆 </span>
+            {recordText}
+          </p>
+        )}
         {error && <p className="text-sm text-destructive">{error}</p>}
       </div>
     </SwipeableRow>

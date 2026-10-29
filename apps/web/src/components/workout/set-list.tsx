@@ -23,6 +23,9 @@ import {
   formatWeight,
   ghostForPosition,
   type GhostValue,
+  detectSessionRecords,
+  formatRecordHits,
+  type RecordBaseline,
   type LastPerformance,
   nextActiveKey,
   type SetRecord,
@@ -92,6 +95,18 @@ function isUnsaved(row: DraftRow): boolean {
   );
 }
 
+/** Both fields hold a usable number — same bar `commit` sets before it dispatches. */
+function isCompleteRow(row: DraftRow): boolean {
+  const input = parseRow(row);
+  return (
+    row.weight.trim() !== "" &&
+    row.reps.trim() !== "" &&
+    Number.isFinite(input.weight_kg) &&
+    Number.isFinite(input.reps) &&
+    input.reps >= 1
+  );
+}
+
 function parseRow(row: DraftRow) {
   return {
     weight_kg: Number(row.weight.replace(",", ".")),
@@ -158,9 +173,16 @@ type Props = {
   workoutExerciseId: string;
   sets: SetRecord[];
   lastPerformance: LastPerformance;
+  recordBaseline: RecordBaseline;
 };
 
-export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }: Props) {
+export function SetList({
+  workoutId,
+  workoutExerciseId,
+  sets,
+  lastPerformance,
+  recordBaseline,
+}: Props) {
   const [rows, setRowsState] = useState<DraftRow[]>(() => sets.map(toDraft));
   const [, startTransition] = useTransition();
 
@@ -423,10 +445,21 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
     // the orphaned set itself once the server responds.
   }
 
+  // Derived on every render, so the chip survives a reload and moves up when a
+  // later set tops it. Only persisted, non-failed rows count.
+  const recordHits = detectSessionRecords(
+    recordBaseline,
+    rows.map((row) => ({
+      ...parseRow(row),
+      is_warmup: row.isWarmup || row.id === null || row.status === "error" || !isCompleteRow(row),
+    }))
+  );
+
   return (
     <div className="mt-3 flex flex-col gap-2">
       <SwipeGroupProvider>
         {rows.map((row, index) => {
+          const parsed = parseRow(row);
           const ghost = ghostFor(rows, lastPerformance, index);
 
           return (
@@ -439,6 +472,9 @@ export function SetList({ workoutId, workoutExerciseId, sets, lastPerformance }:
               isWarmup={row.isWarmup}
               extras={formatSetExtras({ unclean_reps: row.uncleanReps, is_dropset: row.isDropset })}
               ghost={ghost}
+              recordText={
+                recordHits[index].length > 0 ? formatRecordHits(recordHits[index], parsed) : null
+              }
               status={row.status}
               error={row.error}
               canRetry={row.errorKind !== "validation"}

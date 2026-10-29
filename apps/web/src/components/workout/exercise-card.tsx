@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SetList } from "@/components/workout/set-list";
 import { SwipeableRow, SwipeGroupProvider } from "@/components/ui/swipeable-row";
-import type { LastPerformance, WorkoutExerciseDetail } from "@gymtrack/core";
+import type { LastPerformance, RecordBaseline, WorkoutExerciseDetail } from "@gymtrack/core";
 
 type Props = {
   workoutId: string;
@@ -15,6 +15,7 @@ type Props = {
   /** "12. Aug: 80 × 8 · 82,5 × 6", or null when there is no previous session. */
   lastSummary: string | null;
   lastPerformance: LastPerformance;
+  recordBaseline: RecordBaseline;
 };
 
 export function ExerciseCard({
@@ -22,6 +23,7 @@ export function ExerciseCard({
   workoutExercise,
   lastSummary,
   lastPerformance,
+  recordBaseline,
 }: Props) {
   const [isPending, startTransition] = useTransition();
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -119,6 +121,7 @@ export function ExerciseCard({
         workoutExerciseId={workoutExercise.id}
         sets={workoutExercise.sets}
         lastPerformance={lastPerformance}
+        recordBaseline={recordBaseline}
       />
     </article>
   );
