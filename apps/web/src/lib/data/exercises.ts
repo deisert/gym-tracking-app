@@ -3,6 +3,7 @@ import "server-only";
 import {
   type ExercisePickerOption,
   type LastPerformance,
+  type RecordBaseline,
   type SetRecord,
   sortByRecency,
 } from "@gymtrack/core";
@@ -184,6 +185,73 @@ export async function getLastPerformances(
       performedOn: row.workouts.performed_on,
       sets: row.sets.map(toSetRecord).sort((a, b) => a.position - b.position),
     });
+  }
+
+  return result;
+}
+
+/** PostgREST caps a response at max-rows (1000); history is read in pages. */
+const BASELINE_PAGE_SIZE = 1000;
+
+/**
+ * Best marks of each requested exercise over its working sets in OTHER
+ * workouts not later than `beforeDate` — what a set must beat to be a record.
+ * Exercises without such history are absent (nothing can be a record yet).
+ *
+ * shortcut: a same-day workout created later counts as "earlier" (the SQL
+ * `exercise_records()` orders by created_at too); upgrade if that ever shows.
+ * A failed query returns an empty map: no celebration beats a wrong one.
+ */
+export async function getRecordBaselines(
+  exerciseIds: string[],
+  beforeDate: string,
+  excludeWorkoutId: string
+): Promise<Map<string, NonNullable<RecordBaseline>>> {
+  const result = new Map<string, NonNullable<RecordBaseline>>();
+  if (exerciseIds.length === 0) return result;
+
+  const supabase = await createServerSupabase();
+
+  for (let from = 0; ; from += BASELINE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("v_exercise_sets")
+      .select("exercise_id, weight_kg, reps, e1rm_kg")
+      .in("exercise_id", exerciseIds)
+      .neq("workout_id", excludeWorkoutId)
+      .lte("performed_on", beforeDate)
+      .eq("is_warmup", false)
+      .order("set_id") // unique, so no row is skipped or repeated between pages
+      .range(from, from + BASELINE_PAGE_SIZE - 1);
+
+    if (error || !data) {
+      console.error(
+        "getRecordBaselines: failed to load history",
+        { exerciseIds, beforeDate, excludeWorkoutId },
+        error
+      );
+      return new Map();
+    }
+
+    for (const row of data as {
+      exercise_id: string;
+      weight_kg: number | string;
+      reps: number;
+      e1rm_kg: number | string;
+    }[]) {
+      const weight = Number(row.weight_kg);
+      const baseline = result.get(row.exercise_id) ?? {
+        maxWeightKg: 0,
+        maxE1rmKg: 0,
+        maxRepsAtWeight: {},
+      };
+      baseline.maxWeightKg = Math.max(baseline.maxWeightKg, weight);
+      baseline.maxE1rmKg = Math.max(baseline.maxE1rmKg, Number(row.e1rm_kg));
+      const key = String(weight);
+      baseline.maxRepsAtWeight[key] = Math.max(baseline.maxRepsAtWeight[key] ?? 0, row.reps);
+      result.set(row.exercise_id, baseline);
+    }
+
+    if (data.length < BASELINE_PAGE_SIZE) break;
   }
 
   return result;
