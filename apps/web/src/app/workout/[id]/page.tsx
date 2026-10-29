@@ -3,21 +3,14 @@ import { notFound } from "next/navigation";
 import { EndWorkoutButton } from "@/components/workout/end-workout-button";
 import { ExerciseCard } from "@/components/workout/exercise-card";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
+import { RestTimerBar, RestTimerProvider, RestTimerToggle } from "@/components/workout/rest-timer";
 import { ActiveSetProvider } from "@/components/workout/set-list";
 import { WorkoutHeader } from "@/components/workout/workout-header";
 import { getLastPerformances, getRecordBaselines, listExercises } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
-import {
-  formatPerformedOn,
-  formatSetSummary,
-  summarizeWorkout,
-} from "@gymtrack/core";
+import { formatPerformedOn, formatSetSummary, summarizeWorkout } from "@gymtrack/core";
 
-export default async function WorkoutPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
   // `params` is a Promise in this Next.js version — see the Global Constraints.
   const { id } = await params;
 
@@ -42,52 +35,54 @@ export default async function WorkoutPage({
 
   return (
     <main className="mx-auto w-full max-w-md p-4">
-      <WorkoutHeader
-        workoutId={workout.id}
-        performedOn={workout.performed_on}
-        category={workout.category}
-        note={workout.note}
-      />
+      <RestTimerProvider workoutId={workout.id} initialEnabled={workout.rest_timer_enabled}>
+        <WorkoutHeader
+          workoutId={workout.id}
+          performedOn={workout.performed_on}
+          category={workout.category}
+          note={workout.note}
+        />
+        <RestTimerToggle />
 
-      <ActiveSetProvider
-        initialKey={
-          workout.exercises.flatMap((workoutExercise) => workoutExercise.sets).at(-1)?.id ?? null
-        }
-      >
-        <div className="mt-6 flex flex-col gap-4">
-          {workout.exercises.map((workoutExercise) => {
-            const lastPerformance =
-              lastPerformances.get(workoutExercise.exercise.id) ?? null;
-            const summary = lastPerformance ? formatSetSummary(lastPerformance.sets) : "";
+        <ActiveSetProvider
+          initialKey={
+            workout.exercises.flatMap((workoutExercise) => workoutExercise.sets).at(-1)?.id ?? null
+          }
+        >
+          <div className="mt-6 flex flex-col gap-4">
+            {workout.exercises.map((workoutExercise) => {
+              const lastPerformance = lastPerformances.get(workoutExercise.exercise.id) ?? null;
+              const summary = lastPerformance ? formatSetSummary(lastPerformance.sets) : "";
 
-            return (
-              <ExerciseCard
-                key={workoutExercise.id}
-                workoutId={workout.id}
-                workoutExercise={workoutExercise}
-                lastPerformance={lastPerformance}
-                recordBaseline={recordBaselines.get(workoutExercise.exercise.id) ?? null}
-                lastSummary={
-                  lastPerformance && summary
-                    ? `${formatPerformedOn(lastPerformance.performedOn)}: ${summary}`
-                    : null
-                }
-              />
-            );
-          })}
+              return (
+                <ExerciseCard
+                  key={workoutExercise.id}
+                  workoutId={workout.id}
+                  workoutExercise={workoutExercise}
+                  lastPerformance={lastPerformance}
+                  recordBaseline={recordBaselines.get(workoutExercise.exercise.id) ?? null}
+                  lastSummary={
+                    lastPerformance && summary
+                      ? `${formatPerformedOn(lastPerformance.performedOn)}: ${summary}`
+                      : null
+                  }
+                />
+              );
+            })}
+          </div>
+        </ActiveSetProvider>
+
+        {workout.exercises.length === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">Noch keine Übung in diesem Workout.</p>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3">
+          <ExercisePicker workoutId={workout.id} exercises={exercises} />
+          <EndWorkoutButton summary={summary} />
         </div>
-      </ActiveSetProvider>
 
-      {workout.exercises.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">
-          Noch keine Übung in diesem Workout.
-        </p>
-      )}
-
-      <div className="mt-6 flex flex-col gap-3">
-        <ExercisePicker workoutId={workout.id} exercises={exercises} />
-        <EndWorkoutButton summary={summary} />
-      </div>
+        <RestTimerBar />
+      </RestTimerProvider>
     </main>
   );
 }
