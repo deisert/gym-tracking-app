@@ -15,6 +15,7 @@ import {
 
 import { addSet, deleteSet, updateSet } from "@/app/workout/actions";
 import type { ActionFailureKind } from "@/app/workout/actions";
+import { useRestTimer } from "@/components/workout/rest-timer";
 import { SetRow, type SaveStatus } from "@/components/workout/set-row";
 import { Button } from "@/components/ui/button";
 import { SwipeGroupProvider } from "@/components/ui/swipeable-row";
@@ -189,6 +190,7 @@ export function SetList({
   // Moves to whichever row is focused or added, and falls back sensibly when
   // that row is deleted (see `nextActiveKey`).
   const [activeKey, setActiveKey] = useActiveSet();
+  const { start: startRest } = useRestTimer();
 
   /**
    * A mirror of `rows` that callbacks can read synchronously.
@@ -308,6 +310,10 @@ export function SetList({
               errorKind: null,
             });
 
+            // Only a set that just reached the server for the first time starts
+            // the rest: editing an existing one is not "I just finished a set".
+            if (wasNewRow) startRest();
+
             // The check is a confirmation, not a permanent badge: leaving it
             // makes rows saved this session look different from identical
             // rows loaded from the server. Let it fade back to idle.
@@ -350,7 +356,7 @@ export function SetList({
         }
       });
     },
-    [clearRowTimer, patch, workoutExerciseId, workoutId]
+    [clearRowTimer, patch, startRest, workoutExerciseId, workoutId]
   );
 
   /**
