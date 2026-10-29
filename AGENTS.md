@@ -39,6 +39,9 @@ auf `staging` liegt, das nicht in `main` ist (`git log main..staging`).
 npm run lint && npm run test && npm run build
 ```
 
-**Datenbank:** Migrationen unter `supabase/migrations/` müssen auf der
-Staging-Instanz angewendet sein, bevor der zugehörige Code dort deployt wird —
-sonst läuft der Staging-Build gegen ein veraltetes Schema.
+**Datenbank:** Staging und Produktion teilen sich **eine** Supabase-Instanz
+(Vercel: `staging` ist nur ein Preview-Deployment, `main` ist Production).
+Migrationen unter `supabase/migrations/` wirken also sofort auch auf die
+Produktion. Sie müssen abwärtskompatibel sein (nur hinzufügen, nichts
+umbenennen oder löschen, was der Code auf `main` noch nutzt) und vor dem Deploy
+des zugehörigen Codes angewendet werden.
