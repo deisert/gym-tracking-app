@@ -6,3 +6,4 @@ export * from "./exercise-search";
 export * from "./workout-summary";
 export * from "./pwa";
 export * from "./records";
+export * from "./rest-timer";
