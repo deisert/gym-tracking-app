@@ -5,7 +5,7 @@ import { ExerciseCard } from "@/components/workout/exercise-card";
 import { ExercisePicker } from "@/components/workout/exercise-picker";
 import { ActiveSetProvider } from "@/components/workout/set-list";
 import { WorkoutHeader } from "@/components/workout/workout-header";
-import { getLastPerformances, listExercises } from "@/lib/data/exercises";
+import { getLastPerformances, getRecordBaselines, listExercises } from "@/lib/data/exercises";
 import { getWorkoutDetail } from "@/lib/data/workouts";
 import {
   formatPerformedOn,
@@ -29,12 +29,10 @@ export default async function WorkoutPage({
   // `listExercises` needs nothing from the workout, so it rides along in parallel:
   // handing the picker its library here is what makes typing in it cost no
   // request at all.
-  const [lastPerformances, exercises] = await Promise.all([
-    getLastPerformances(
-      workout.exercises.map((workoutExercise) => workoutExercise.exercise.id),
-      workout.performed_on,
-      workout.id
-    ),
+  const exerciseIds = workout.exercises.map((workoutExercise) => workoutExercise.exercise.id);
+  const [lastPerformances, recordBaselines, exercises] = await Promise.all([
+    getLastPerformances(exerciseIds, workout.performed_on, workout.id),
+    getRecordBaselines(exerciseIds, workout.performed_on, workout.id),
     listExercises(),
   ]);
 
@@ -68,6 +66,7 @@ export default async function WorkoutPage({
                 workoutId={workout.id}
                 workoutExercise={workoutExercise}
                 lastPerformance={lastPerformance}
+                recordBaseline={recordBaselines.get(workoutExercise.exercise.id) ?? null}
                 lastSummary={
                   lastPerformance && summary
                     ? `${formatPerformedOn(lastPerformance.performedOn)}: ${summary}`
