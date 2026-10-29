@@ -5,9 +5,20 @@ import {
   authPasswordSchema,
   exerciseNameSchema,
   exerciseUpdateSchema,
+  restTimerEnabledSchema,
   setInputSchema,
   workoutMetaSchema,
 } from "./validation";
+
+describe("restTimerEnabledSchema", () => {
+  it.each([true, false])("accepts %s", (value) => {
+    expect(restTimerEnabledSchema.safeParse(value).success).toBe(true);
+  });
+
+  it.each(["true", 1, null, undefined])("rejects %s", (value) => {
+    expect(restTimerEnabledSchema.safeParse(value).success).toBe(false);
+  });
+});
 
 describe("setInputSchema", () => {
   it("accepts a normal working set", () => {

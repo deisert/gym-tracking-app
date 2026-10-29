@@ -32,6 +32,7 @@ type RawWorkout = {
   performed_on: string;
   category: string | null;
   note: string | null;
+  rest_timer_enabled?: boolean;
   workout_exercises: RawWorkoutExercise[] | null;
 };
 
@@ -53,7 +54,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
   const { data, error } = await supabase
     .from("workouts")
     .select(
-      `id, performed_on, category, note,
+      `id, performed_on, category, note, rest_timer_enabled,
        workout_exercises (
          id, position, note,
          exercises ( id, name, note ),
@@ -87,6 +88,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutDetail
     performed_on: raw.performed_on,
     category: raw.category,
     note: raw.note,
+    rest_timer_enabled: raw.rest_timer_enabled ?? false,
     exercises,
   };
 }

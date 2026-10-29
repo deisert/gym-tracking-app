@@ -46,3 +46,5 @@ export const workoutMetaSchema = z.object({
   note: z.string().trim().max(2000).nullable(),
 });
 export type WorkoutMeta = z.infer<typeof workoutMetaSchema>;
+
+export const restTimerEnabledSchema = z.boolean();
