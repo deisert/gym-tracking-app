@@ -18,7 +18,7 @@ Companion to `CONCEPT.md`. These are post-v1 ideas — nothing here blocks the v
 
 | # | Idea | Description | Impact | Effort |
 |---|------|-------------|--------|--------|
-| 1 | **Rest timer with auto-start** | Starts when a set is saved, notifies when rest is over; lives inline in the log screen. | M | L |
+| 1 | ~~**Rest timer with auto-start**~~ ✅ done 2026-10-29 | Per-workout switch; starts when a new set is saved, vibrates when rest is over. See `docs/superpowers/plans/2026-10-29-rest-timer.md`. | M | L |
 | 2 | **Plate calculator** | Tap a weight → shows which plates to load per side. In-gym utility with delight factor. | M | L |
 | 3 | **Frequency goal + streak framing** | Set a goal like "3×/week"; heatmap shows progress toward it. Encouraging, not guilt-driven. | M | L |
 | 4 | **Exercise detail page** | One place per exercise: history, PRs, notes, variation filter; deep-linkable from the dashboard. Spec: `docs/superpowers/specs/2026-09-30-exercise-detail-page-design.md`. | M | M |
@@ -40,7 +40,7 @@ Companion to `CONCEPT.md`. These are post-v1 ideas — nothing here blocks the v
 |------|------|-----|------------|
 | 1 | Workout templates | Directly removes the most friction from the actual weekly routine | No |
 | 2 | ~~Notes-file import~~ ✅ done 2026-09-25 | Instantly makes dashboards meaningful; the data already exists | No |
-| 3 | Rest timer + PR detection | Two small features that make daily logging feel great | Yes |
+| 3 | ~~Rest timer + PR detection~~ ✅ done 2026-10-29 | Two small features that make daily logging feel great | Yes |
 | 4 | PWA + offline queue | Reliability is existential for an in-gym tool | No |
 | 5 | Body weight tracking + export | Cheap, rounds out "my data, my progress" | Yes |
 

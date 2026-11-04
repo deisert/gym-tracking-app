@@ -46,6 +46,7 @@ export type WorkoutDetail = {
   performed_on: string;
   category: string | null;
   note: string | null;
+  rest_timer_enabled: boolean;
   exercises: WorkoutExerciseDetail[];
 };
 

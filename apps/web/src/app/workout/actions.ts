@@ -8,6 +8,7 @@ import {
   exerciseUpdateSchema,
   type ExerciseOption,
   nextPosition,
+  restTimerEnabledSchema,
   setInputSchema,
   type SetRecord,
   todayInAppTimezone,
@@ -125,6 +126,29 @@ export async function updateWorkoutMeta(
 
   revalidatePath(`/workout/${workoutId}`);
   revalidatePath("/");
+  return { ok: true, data: null };
+}
+
+/** The per-workout rest timer switch; saved as soon as the chip is tapped. */
+export async function setRestTimerEnabled(
+  workoutId: string,
+  enabled: unknown
+): Promise<ActionResult<null>> {
+  const parsed = restTimerEnabledSchema.safeParse(enabled);
+  if (!parsed.success) return { ok: false, error: "Ungültige Angabe.", kind: "validation" };
+
+  const supabase = await createServerSupabase();
+  const { data, error } = await supabase
+    .from("workouts")
+    .update({ rest_timer_enabled: parsed.data })
+    .eq("id", workoutId)
+    .select("id");
+
+  if (error || !data || data.length === 0) {
+    return { ok: false, error: SAVE_FAILED, kind: "transient" };
+  }
+
+  revalidatePath(`/workout/${workoutId}`);
   return { ok: true, data: null };
 }
 
