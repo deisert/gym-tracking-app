@@ -35,3 +35,12 @@ history and comparison filtered down to:
 ## General questions 
 What the fuck is a superset_group
 
+
+
+## Deploy: apply migrations automatically
+PR #33 (rest timer) went live before `20261029000000_workout_rest_timer.sql` was applied.
+Every workout page then 404'd (Supabase 400: `workouts.rest_timer_enabled` missing) — fixed by applying it by hand on 2026-11-10.
+- Run `supabase db push` on merge to `main` (CI) or as part of the deploy, so schema lands before the code.
+- `getWorkoutDetail` (`apps/web/src/lib/data/workouts.ts`) turns a DB error into `null` → `notFound()`.
+  Throw on `error` instead, so a broken query shows an error page, not a misleading 404.
+- Check for empty leftover workouts created during the outage.
