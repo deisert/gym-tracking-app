@@ -42,14 +42,19 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
           category={workout.category}
           note={workout.note}
         />
-        <RestTimerToggle />
+        {/* Sticky, so the timer is one tap away however far down the workout
+            you are — not only after scrolling back to the top. It sticks just
+            below the status-bar strip from the root layout. */}
+        <div className="sticky top-[env(safe-area-inset-top)] z-30 -mx-4 bg-background/95 px-4 py-2 backdrop-blur">
+          <RestTimerToggle />
+        </div>
 
         <ActiveSetProvider
           initialKey={
             workout.exercises.flatMap((workoutExercise) => workoutExercise.sets).at(-1)?.id ?? null
           }
         >
-          <div className="mt-6 flex flex-col gap-4">
+          <div className="mt-4 flex flex-col gap-4">
             {workout.exercises.map((workoutExercise) => {
               const lastPerformance = lastPerformances.get(workoutExercise.exercise.id) ?? null;
               const summary = lastPerformance ? formatSetSummary(lastPerformance.sets) : "";
