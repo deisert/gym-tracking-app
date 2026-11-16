@@ -183,10 +183,10 @@ export function RestTimerProvider({
   );
 
   const setSeconds = useCallback((next: number) => {
-    writePrefs({ ...prefsRef.current, seconds: clampRestSeconds(next) });
-    // A countdown still running on the old length is discarded; the new one
-    // starts with the next saved set.
-    setEndsAt(null);
+    const seconds = clampRestSeconds(next);
+    writePrefs({ ...prefsRef.current, seconds });
+    // A countdown already running restarts from the full new length.
+    setEndsAt((current) => (current === null ? null : Date.now() + seconds * 1000));
   }, []);
   const setSound = useCallback((next: boolean) => {
     writePrefs({ ...prefsRef.current, sound: next });
