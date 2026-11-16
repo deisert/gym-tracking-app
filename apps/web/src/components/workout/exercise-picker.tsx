@@ -107,8 +107,11 @@ export function ExercisePicker({
           so the mobile keyboard is open from the first frame. A bottom sheet
           would put the title/search input right where the keyboard covers
           them; anchoring top keeps both visible above the keyboard instead
-          (user feedback 2026-08-20, screenshot: docs stored in chat history). */}
-      <DialogContent className="inset-x-0 top-0 bottom-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-t-none rounded-b-2xl sm:max-w-md">
+          (user feedback 2026-08-20, screenshot: docs stored in chat history).
+          Touching the top edge, it must clear the status bar / Dynamic Island
+          in the installed PWA: the padding and the close button are pushed
+          down by the safe-area inset (zero in a normal browser tab). */}
+      <DialogContent className="inset-x-0 top-0 bottom-auto mx-auto max-h-[85dvh] w-full max-w-md translate-x-0 translate-y-0 rounded-t-none rounded-b-2xl pt-[calc(1rem+env(safe-area-inset-top))] sm:max-w-md [&>[data-slot=dialog-close]]:top-[calc(0.5rem+env(safe-area-inset-top))]">
         <DialogHeader>
           <DialogTitle>Übung wählen</DialogTitle>
         </DialogHeader>
