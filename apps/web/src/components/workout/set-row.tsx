@@ -64,125 +64,129 @@ export function SetRow({
   onFocusRow,
 }: Props) {
   const inputClass =
-    "min-h-12 w-full rounded-xl bg-muted px-3 text-2xl font-semibold tabular-nums " +
+    "min-h-12 w-full min-w-0 rounded-xl bg-muted px-1 text-2xl font-semibold tabular-nums " +
     "text-center outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <SwipeableRow id={rowId} deleteLabel={`Satz ${index + 1} löschen`} onDelete={onDelete}>
+      {/* One grid for the inputs and the lines under them, so every row's
+          columns line up whatever its status shows, and notes start flush with
+          the weight input. The ring is inset: SwipeableRow's overflow-hidden
+          clips anything drawn outside the row. */}
       <div
         className={cn(
-          "flex flex-col gap-1 rounded-xl p-1.5 ring-2 transition-shadow",
+          "grid grid-cols-[1.25rem_minmax(0,1fr)_auto_minmax(0,1fr)_2.75rem_2.5rem] items-center gap-x-2 gap-y-1 rounded-xl p-1.5 ring-2 ring-inset transition-shadow",
           isActive ? "ring-ring" : "ring-transparent"
         )}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "w-6 text-sm tabular-nums",
-              isWarmup ? "text-muted-foreground" : "text-foreground"
-            )}
-          >
-            {index + 1}
-          </span>
+        <span
+          className={cn(
+            "text-center text-sm tabular-nums",
+            isWarmup ? "text-muted-foreground" : "text-foreground"
+          )}
+        >
+          {index + 1}
+        </span>
 
-          <input
-            aria-label={`Gewicht Satz ${index + 1}`}
-            inputMode="decimal"
-            value={weight}
-            placeholder={ghost ? formatWeight(ghost.weight_kg) : "kg"}
-            onChange={(event) => onWeightChange(event.target.value)}
-            onFocus={onFocusRow}
-            onBlur={onCommit}
-            className={inputClass}
-          />
+        <input
+          aria-label={`Gewicht Satz ${index + 1}`}
+          inputMode="decimal"
+          value={weight}
+          placeholder={ghost ? formatWeight(ghost.weight_kg) : "kg"}
+          onChange={(event) => onWeightChange(event.target.value)}
+          onFocus={onFocusRow}
+          onBlur={onCommit}
+          className={inputClass}
+        />
 
-          <span className="text-muted-foreground" aria-hidden>
-            ×
-          </span>
+        <span className="text-muted-foreground" aria-hidden>
+          ×
+        </span>
 
-          <input
-            aria-label={`Wiederholungen Satz ${index + 1}`}
-            inputMode="numeric"
-            value={reps}
-            placeholder={ghost ? String(ghost.reps) : "Wdh."}
-            onChange={(event) => onRepsChange(event.target.value)}
-            onFocus={onFocusRow}
-            onBlur={onCommit}
-            className={inputClass}
-          />
+        <input
+          aria-label={`Wiederholungen Satz ${index + 1}`}
+          inputMode="numeric"
+          value={reps}
+          placeholder={ghost ? String(ghost.reps) : "Wdh."}
+          onChange={(event) => onRepsChange(event.target.value)}
+          onFocus={onFocusRow}
+          onBlur={onCommit}
+          className={inputClass}
+        />
 
-          <button
-            type="button"
-            onClick={onToggleWarmup}
-            aria-pressed={isWarmup}
-            aria-label={`Aufwärmsatz ${index + 1}`}
-            className={cn(
-              "min-h-12 min-w-12 rounded-xl text-sm font-medium",
-              // Warm-up state is never signalled by colour alone (DESIGN_SYSTEM.md §8).
-              isWarmup ? "bg-muted text-muted-foreground" : "text-muted-foreground"
-            )}
-          >
-            W
-          </button>
+        <button
+          type="button"
+          onClick={onToggleWarmup}
+          aria-pressed={isWarmup}
+          aria-label={`Aufwärmsatz ${index + 1}`}
+          className={cn(
+            "min-h-12 rounded-xl text-sm font-medium",
+            // Warm-up state is never signalled by colour alone (DESIGN_SYSTEM.md §8).
+            isWarmup
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground ring-1 ring-border ring-inset"
+          )}
+        >
+          W
+        </button>
 
-          <span className="flex min-w-6 items-center justify-center" aria-live="polite">
-            {status === "saving" && <span className="text-muted-foreground">…</span>}
-            {status === "saved" && (
-              <span className="text-primary" aria-label="Gespeichert">
-                ✓
-              </span>
-            )}
-            {status === "error" &&
-              (canRetry ? (
-                <button
-                  type="button"
-                  onClick={onRetry}
-                  aria-label="Erneut versuchen"
-                  className="flex min-h-12 min-w-11 items-center justify-center text-[hsl(38_92%_55%)]"
-                >
-                  ●
-                </button>
-              ) : (
-                // A validation failure can never succeed unchanged, so there is
-                // no retry to offer — the message below says what to fix.
-                <span className="text-destructive" aria-hidden>
-                  ●
-                </span>
-              ))}
-            {status === "idle" && canConfirmGhost && (
+        <span className="flex items-center justify-center" aria-live="polite">
+          {status === "saving" && <span className="text-muted-foreground">…</span>}
+          {status === "saved" && (
+            <span className="text-primary" aria-label="Gespeichert">
+              ✓
+            </span>
+          )}
+          {status === "error" &&
+            (canRetry ? (
               <button
                 type="button"
-                onClick={onConfirmGhost}
-                aria-label={`Vorschlag für Satz ${index + 1} übernehmen`}
-                className="flex min-h-12 min-w-11 items-center justify-center text-primary"
-              >
-                ✓
-              </button>
-            )}
-            {status === "idle" && !canConfirmGhost && isUnsaved && (
-              <span
-                className="text-muted-foreground"
-                aria-label={`Satz ${index + 1} nicht gespeichert`}
+                onClick={onRetry}
+                aria-label="Erneut versuchen"
+                className="flex min-h-12 w-full items-center justify-center text-[hsl(38_92%_55%)]"
               >
                 ●
+              </button>
+            ) : (
+              // A validation failure can never succeed unchanged, so there is
+              // no retry to offer — the message below says what to fix.
+              <span className="text-destructive" aria-hidden>
+                ●
               </span>
-            )}
-          </span>
-        </div>
+            ))}
+          {status === "idle" && canConfirmGhost && (
+            <button
+              type="button"
+              onClick={onConfirmGhost}
+              aria-label={`Vorschlag für Satz ${index + 1} übernehmen`}
+              className="flex min-h-12 w-full items-center justify-center text-primary"
+            >
+              ✓
+            </button>
+          )}
+          {status === "idle" && !canConfirmGhost && isUnsaved && (
+            <span
+              className="text-muted-foreground"
+              aria-label={`Satz ${index + 1} nicht gespeichert`}
+            >
+              ●
+            </span>
+          )}
+        </span>
 
-        {extras && <p className="pl-8 text-sm text-muted-foreground">{extras}</p>}
+        {extras && <p className="col-span-5 col-start-2 text-sm text-muted-foreground">{extras}</p>}
         {recordText && (
           // --warning is the design system's PR highlight. Icon + words, so it
           // never rests on colour alone; the pulse is skipped for reduced motion.
           <p
             role="status"
-            className="pl-8 text-sm font-medium text-[hsl(38_92%_55%)] motion-safe:animate-[pulse_0.4s_ease-out_1]"
+            className="col-span-5 col-start-2 text-sm font-medium text-[hsl(38_92%_55%)] motion-safe:animate-[pulse_0.4s_ease-out_1]"
           >
             <span aria-hidden>🏆 </span>
             {recordText}
           </p>
         )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <p className="col-span-5 col-start-2 text-sm text-destructive">{error}</p>}
       </div>
     </SwipeableRow>
   );

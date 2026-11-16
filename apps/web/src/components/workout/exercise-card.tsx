@@ -79,7 +79,9 @@ export function ExerciseCard({
               type="button"
               onClick={() => setIsEditing((open) => !open)}
               aria-expanded={isEditing}
-              className="min-h-11 shrink-0 text-sm text-muted-foreground"
+              // -mt-2.5 lines the label up with the title instead of the middle of
+              // its own 44px hit area.
+              className="-mt-2.5 min-h-11 shrink-0 text-sm text-muted-foreground"
             >
               {isEditing ? "Fertig" : "Bearbeiten"}
             </button>

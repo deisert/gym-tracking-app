@@ -41,8 +41,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="de" className={`${inter.variable} h-full antialiased`}>
       {/* pb keeps the fixed tab bar from covering content: 5rem for the bar
-          itself, plus the home-indicator inset that viewport-fit=cover exposes. */}
-      <body className="min-h-full flex flex-col pb-[calc(5rem+env(safe-area-inset-bottom))]">
+          itself, plus the home-indicator inset that viewport-fit=cover exposes.
+          pt does the same for the status bar / notch at the top. */}
+      <body className="min-h-full flex flex-col pt-[env(safe-area-inset-top)] pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        {/* With the black-translucent status bar the page scrolls underneath
+            the clock; this strip keeps that area solid instead of showing
+            content smeared behind it. Zero height outside an installed PWA. */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 top-0 z-40 h-[env(safe-area-inset-top)] bg-background"
+        />
         <OfflineBanner />
         <RegisterSW />
         {children}
