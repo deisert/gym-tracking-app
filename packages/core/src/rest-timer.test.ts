@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { formatRestTime, restRemainingSeconds } from "./rest-timer";
+import {
+  clampRestSeconds,
+  DEFAULT_REST_TIMER_PREFS,
+  formatRestTime,
+  parseRestTimerPrefs,
+  REST_TIMER_SECONDS,
+  restRemainingSeconds,
+} from "./rest-timer";
 
 describe("restRemainingSeconds", () => {
   const now = 1_000_000;
@@ -37,5 +44,57 @@ describe("formatRestTime", () => {
     [NaN, "0:00"],
   ])("formats %s as %s", (seconds, expected) => {
     expect(formatRestTime(seconds)).toBe(expected);
+  });
+});
+
+describe("clampRestSeconds", () => {
+  it("keeps values on the 15 s grid inside the bounds", () => {
+    expect(clampRestSeconds(90)).toBe(90);
+    expect(clampRestSeconds(15)).toBe(15);
+    expect(clampRestSeconds(600)).toBe(600);
+  });
+
+  it("snaps to the nearest 15 s step", () => {
+    expect(clampRestSeconds(97)).toBe(90);
+    expect(clampRestSeconds(98)).toBe(105);
+  });
+
+  it("clamps to the bounds", () => {
+    expect(clampRestSeconds(0)).toBe(15);
+    expect(clampRestSeconds(-30)).toBe(15);
+    expect(clampRestSeconds(3600)).toBe(600);
+  });
+
+  it("falls back to the default for non-numbers", () => {
+    expect(clampRestSeconds(NaN)).toBe(REST_TIMER_SECONDS);
+    expect(clampRestSeconds(Infinity)).toBe(REST_TIMER_SECONDS);
+  });
+});
+
+describe("parseRestTimerPrefs", () => {
+  it("defaults when nothing is stored", () => {
+    expect(parseRestTimerPrefs(null)).toEqual(DEFAULT_REST_TIMER_PREFS);
+    expect(parseRestTimerPrefs("")).toEqual(DEFAULT_REST_TIMER_PREFS);
+  });
+
+  it("reads a stored value", () => {
+    expect(parseRestTimerPrefs('{"seconds":90,"sound":false}')).toEqual({
+      seconds: 90,
+      sound: false,
+    });
+  });
+
+  it("defaults on broken JSON or a non-object", () => {
+    expect(parseRestTimerPrefs("{")).toEqual(DEFAULT_REST_TIMER_PREFS);
+    expect(parseRestTimerPrefs("42")).toEqual(DEFAULT_REST_TIMER_PREFS);
+    expect(parseRestTimerPrefs("null")).toEqual(DEFAULT_REST_TIMER_PREFS);
+  });
+
+  it("keeps the usable field when the other is wrong", () => {
+    expect(parseRestTimerPrefs('{"seconds":"90","sound":false}')).toEqual({
+      seconds: REST_TIMER_SECONDS,
+      sound: false,
+    });
+    expect(parseRestTimerPrefs('{"seconds":9999}')).toEqual({ seconds: 600, sound: true });
   });
 });
